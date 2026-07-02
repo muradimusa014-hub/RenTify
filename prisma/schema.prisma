@@ -1,0 +1,45 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  role         String     // "tenant" | "landlord" | "admin"
+  createdAt    DateTime   @default(now())
+  properties   Property[]
+  bookings     Booking[]
+}
+
+model Property {
+  id           String     @id @default(uuid())
+  title        String
+  description  String
+  price        Float
+  location     String     // e.g. "Samaru", "Sabon Gari", "GRA"
+  images       String     // Comma-separated list of image URLs/filenames
+  status       String     @default("available") // "available" | "pending" | "taken"
+  isSuspicious Boolean    @default(false)
+  ownerId      String
+  owner        User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bookings     Booking[]
+  createdAt    DateTime   @default(now())
+}
+
+model Booking {
+  id           String     @id @default(uuid())
+  propertyId   String
+  property     Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenantId     String
+  tenant       User       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  status       String     @default("requested") // "requested" | "payment_pending" | "paid" | "completed" | "rejected"
+  receiptImage String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
