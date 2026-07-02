@@ -6,7 +6,7 @@ A property rental marketplace built for Zaria, Nigeria. Browse listings, submit 
 
 - **Frontend**: Next.js 15, React 19
 - **Backend**: Next.js API Routes (App Router)
-- **Database**: SQLite via Prisma ORM
+- **Database**: PostgreSQL via Prisma ORM
 - **Auth**: JWT (httpOnly cookies), bcrypt
 - **Deployment**: Vercel
 
@@ -21,34 +21,27 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and set a strong `JWT_SECRET`:
-
-```bash
-cp .env.example .env
-```
-
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `JWT_SECRET` | Secret used to sign tokens | Yes |
-| `DATABASE_URL` | Database connection string (e.g. SQLite or Postgres) | Yes in production |
+| `DATABASE_URL` | PostgreSQL connection string | Yes |
+
+### Local Development
+
+You can use your production Supabase database for local development, or any local PostgreSQL instance.
+
+Example `.env`:
+
+```
+JWT_SECRET=your-secret-key-here
+DATABASE_URL="postgresql://postgres:your-password@host:5432/postgres?sslmode=require"
+```
 
 ## Database
 
 ```bash
 npx prisma generate
 npx prisma db push
-```
-
-## Production Database (Vercel)
-
-The app uses SQLite in development. For Vercel, use a PostgreSQL URL (e.g. [Vercel Postgres](https://vercel.com/marketplace/postgres), Supabase, or Neon) and set `DATABASE_URL` in Vercel environment variables.
-
-If you want to keep SQLite for local testing only, keep `DATABASE_URL="file:./dev.db"`.
-
-To seed sample data:
-
-```bash
-node prisma/seed.js
 ```
 
 ## Roles
@@ -85,5 +78,4 @@ npm run build
 vercel --prod
 ```
 
-Ensure `JWT_SECRET` is set in your Vercel project environment variables before deploying to production.
-# RenTify 
+Ensure `JWT_SECRET` and `DATABASE_URL` are set in your Vercel project environment variables before deploying to production.
