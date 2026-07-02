@@ -30,7 +30,7 @@ cp .env.example .env
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `JWT_SECRET` | Secret used to sign tokens | Yes |
-| `DATABASE_URL` | SQLite database path | No (defaults to `file:./dev.db`) |
+| `DATABASE_URL` | Database connection string (e.g. SQLite or Postgres) | Yes in production |
 
 ## Database
 
@@ -39,7 +39,13 @@ npx prisma generate
 npx prisma db push
 ```
 
-To seed sample data (if a seed script exists):
+## Production Database (Vercel)
+
+The app uses SQLite in development. For Vercel, use a PostgreSQL URL (e.g. [Vercel Postgres](https://vercel.com/marketplace/postgres), Supabase, or Neon) and set `DATABASE_URL` in Vercel environment variables.
+
+If you want to keep SQLite for local testing only, keep `DATABASE_URL="file:./dev.db"`.
+
+To seed sample data:
 
 ```bash
 node prisma/seed.js
