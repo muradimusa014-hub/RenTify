@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Skeleton from '@/components/Skeleton';
 import Lightbox from '@/components/Lightbox';
+import ImageWithFallback from '@/components/ImageWithFallback';
 
 export default function PropertyDetail() {
   const { id } = useParams();
@@ -103,7 +104,7 @@ export default function PropertyDetail() {
       <div style={{ maxWidth: 'var(--max-width)', margin: '4rem auto', padding: '0 1.5rem', textAlign: 'center' }}>
         <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Property Not Found</h2>
         <p style={{ color: 'var(--text-light)' }}>The property you are looking for does not exist or has been deleted.</p>
-        <button onClick={() => router.push('/listings')} className="btn btn-primary" style={{ width: 'auto', marginTop: '1.5rem' }}>
+        <button onClick={() => router.push('/listings')} className="btn btn-primary btn-auto" style={{ marginTop: '1.5rem' }}>
           Back to Listings
         </button>
       </div>
@@ -129,7 +130,11 @@ export default function PropertyDetail() {
           onClick={() => { setLightboxIndex(images.indexOf(activeImage) >= 0 ? images.indexOf(activeImage) : 0); setLightboxOpen(true); }}
           style={{ width: '100%', height: 'clamp(250px, 50vw, 450px)', background: '#E2E8F0', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)', cursor: 'pointer' }}
         >
-          <img src={activeImage} alt={property.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} />
+          <ImageWithFallback
+            src={activeImage}
+            alt={property.title}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }}
+          />
         </div>
         
         {images.length > 1 && (
@@ -150,7 +155,7 @@ export default function PropertyDetail() {
                   flexShrink: 0
                 }}
               >
-                <img src={imgUrl} alt={`Thumbnail ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <ImageWithFallback src={imgUrl} alt={`Thumbnail ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </button>
             ))}
           </div>

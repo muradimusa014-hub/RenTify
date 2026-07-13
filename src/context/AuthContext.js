@@ -51,13 +51,7 @@ export function AuthProvider({ children }) {
       }
       
       setUser(data.user);
-      
-      // Redirect based on role
-      if (data.user.role === 'admin') router.push('/admin');
-      else if (data.user.role === 'landlord') router.push('/landlord');
-      else router.push('/tenant');
-      
-      return { success: true };
+      return { success: true, user: data.user };
     } catch (error) {
       setUser(null);
       return { success: false, error: error.message };

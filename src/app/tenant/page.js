@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
+import ImageWithFallback from '@/components/ImageWithFallback';
 
 function BookingStepper({ status }) {
   if (status === 'rejected') return null;
@@ -18,7 +19,7 @@ function BookingStepper({ status }) {
     let activeIdx = 0;
     if (status === 'requested') activeIdx = 0;
     else if (status === 'payment_pending') activeIdx = 1;
-    else if (status === 'paid') activeIdx = 3;
+    else if (status === 'paid') activeIdx = 2;
     else if (status === 'completed') activeIdx = 4;
 
     if (status === 'completed') return 'completed';
@@ -30,7 +31,7 @@ function BookingStepper({ status }) {
   const getLineFillWidth = () => {
     if (status === 'requested') return '0%';
     if (status === 'payment_pending') return '25%';
-    if (status === 'paid') return '75%';
+    if (status === 'paid') return '50%';
     if (status === 'completed') return '100%';
     return '0%';
   };
@@ -136,7 +137,7 @@ export default function TenantDashboard() {
           <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>My Bookings Dashboard</h1>
           <p style={{ color: 'var(--text-light)', fontSize: '0.95rem' }}>Track your requested properties and secure your rental bookings in Zaria.</p>
         </div>
-        <Link href="/listings" className="btn btn-primary" style={{ width: 'auto' }}>
+        <Link href="/listings" className="btn btn-primary btn-auto">
           🔍 Find More Properties
         </Link>
       </div>
@@ -201,7 +202,7 @@ export default function TenantDashboard() {
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏡</div>
           <h3 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontSize: '1.25rem' }}>No Bookings Yet</h3>
           <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem' }}>You haven't requested any property bookings in Zaria yet.</p>
-          <Link href="/listings" className="btn btn-secondary" style={{ width: 'auto' }}>
+          <Link href="/listings" className="btn btn-secondary btn-auto">
             Browse Properties
           </Link>
         </div>
@@ -223,11 +224,11 @@ export default function TenantDashboard() {
             >
               {/* Left Side: Property Preview */}
               <div style={{ position: 'relative', height: '100%', minHeight: '200px' }}>
-                <img 
-                  src={booking.property.images.split(',')[0]} 
-                  alt={booking.property.title} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
+                 <ImageWithFallback 
+                   src={booking.property.images.split(',')[0]} 
+                   alt={booking.property.title} 
+                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                 />
                 <span className={`badge badge-${booking.status}`} style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 10 }}>
                   {booking.status.replace('_', ' ')}
                 </span>

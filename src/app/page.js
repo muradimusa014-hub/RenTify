@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Skeleton from '@/components/Skeleton';
+import ImageWithFallback from '@/components/ImageWithFallback';
 
 const ZARIA_AREAS = [
   'Samaru',
@@ -177,14 +178,6 @@ export default function Home() {
           </Link>
         </div>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-light)' }}>
-            Loading properties...
-          </div>
-        ) : featured.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '4rem 0', background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-light)' }}>
-            No properties listed yet. Landlords can register and start adding listings!
-          </div>
-        ) : loading ? (
           <div className="grid grid-cols-3">
             {[1, 2, 3].map(i => (
               <div key={i} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
@@ -197,12 +190,12 @@ export default function Home() {
               </div>
             ))}
           </div>
-        ) : (
+        ) : featured.length === 0 ? (
           <div className="grid grid-cols-3">
             {featured.map((property) => (
               <Link href={`/properties/${property.id}`} key={property.id} className="property-card">
                 <div className="property-card-img-wrapper">
-                  <img 
+                  <ImageWithFallback 
                     src={property.images.split(',')[0]} 
                     alt={property.title} 
                     className="property-card-img"

@@ -147,6 +147,13 @@ h1, h2, h3, h4, h5, h6 {
 /* Mobile Nav */
 .mobile-toggle {
   display: none;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--primary);
+  padding: 0.25rem;
+  lineHeight: 1;
 }
 
 @media (max-width: 767px) {
@@ -243,6 +250,10 @@ h1, h2, h3, h4, h5, h6 {
 
 .btn-outline:hover {
   background: var(--border);
+}
+
+.btn-auto {
+  width: auto;
 }
 
 .btn-danger {
@@ -568,6 +579,9 @@ h1, h2, h3, h4, h5, h6 {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
+  }
+  .layout-sidebar {
+    grid-template-columns: 280px 1fr;
   }
 }
 

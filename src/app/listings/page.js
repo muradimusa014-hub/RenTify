@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Skeleton from '@/components/Skeleton';
+import ImageWithFallback from '@/components/ImageWithFallback';
 
 const ZARIA_AREAS = [
   'Samaru',
@@ -63,7 +64,7 @@ function ListingsContent() {
         <p style={{ color: 'var(--text-light)', fontSize: '0.95rem' }}>Find student hostels, shared flats, and luxury apartments in Zaria.</p>
       </div>
 
-      <div className="grid grid-cols-2" style={{ gridTemplateColumns: '280px 1fr' }}>
+      <div className="grid layout-sidebar">
         {/* Filters Sidebar */}
         <aside style={{
           background: '#fff',
@@ -155,11 +156,11 @@ function ListingsContent() {
               {properties.map((property) => (
                 <Link href={`/properties/${property.id}`} key={property.id} className="property-card">
                   <div className="property-card-img-wrapper">
-                    <img 
-                      src={property.images.split(',')[0]} 
-                      alt={property.title} 
-                      className="property-card-img"
-                    />
+                     <ImageWithFallback 
+                       src={property.images.split(',')[0]} 
+                       alt={property.title} 
+                       className="property-card-img"
+                     />
                     <span className={`badge badge-${property.status} property-card-badge`}>
                       {property.status}
                     </span>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
+import ImageWithFallback from '@/components/ImageWithFallback';
 
 const ZARIA_AREAS = [
   'Samaru',
@@ -177,7 +178,7 @@ export default function LandlordDashboard() {
           <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Landlord Control Panel</h1>
           <p style={{ color: 'var(--text-light)', fontSize: '0.95rem' }}>Manage your rental listings in Zaria and view tenant booking requests.</p>
         </div>
-        <button onClick={handleOpenCreateModal} className="btn btn-primary" style={{ width: 'auto' }}>
+        <button onClick={handleOpenCreateModal} className="btn btn-primary btn-auto">
           ➕ List New Property
         </button>
       </div>
@@ -257,7 +258,7 @@ export default function LandlordDashboard() {
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏢</div>
             <h3 style={{ color: 'var(--primary)', marginBottom: '0.5rem' }}>No Listings Yet</h3>
             <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem' }}>You haven't listed any rentals in Zaria yet. Get started now!</p>
-            <button onClick={handleOpenCreateModal} className="btn btn-secondary" style={{ width: 'auto' }}>
+             <button onClick={handleOpenCreateModal} className="btn btn-secondary btn-auto">
               Add Property Listing
             </button>
           </div>
@@ -266,7 +267,7 @@ export default function LandlordDashboard() {
             {properties.map((property) => (
               <div key={property.id} className="property-card" style={{ height: '100%' }}>
                 <div className="property-card-img-wrapper">
-                  <img src={property.images.split(',')[0]} alt={property.title} className="property-card-img" />
+                  <ImageWithFallback src={property.images.split(',')[0]} alt={property.title} className="property-card-img" />
                   <span className={`badge badge-${property.status} property-card-badge`}>{property.status}</span>
                   {property.isSuspicious && (
                     <span className="badge badge-rejected" style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 10 }}>

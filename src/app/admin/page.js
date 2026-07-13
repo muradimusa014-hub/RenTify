@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
+import ImageWithFallback from '@/components/ImageWithFallback';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -72,7 +73,7 @@ export default function AdminDashboard() {
           <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Admin Platform Console</h1>
           <p style={{ color: 'var(--text-light)', fontSize: '0.95rem' }}>Verify manual payments, complete booking inspection loops, and audit system properties or users.</p>
         </div>
-        <button onClick={loadData} className="btn btn-outline" style={{ width: 'auto' }}>
+        <button onClick={loadData} className="btn btn-outline btn-auto">
           🔄 Refresh Console
         </button>
       </div>
@@ -164,36 +165,36 @@ export default function AdminDashboard() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        {booking.status === 'payment_pending' && (
-                          <>
-                            <button
-                              disabled={actionLoadingId !== null}
-                              onClick={() => handleAdminAction({ action: 'approve_payment', bookingId: booking.id }, booking.id + '_app')}
-                              className="btn btn-secondary"
-                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto' }}
-                            >
-                              {actionLoadingId === booking.id + '_app' ? '...' : 'Approve Payment'}
-                            </button>
-                            <button
-                              disabled={actionLoadingId !== null}
-                              onClick={() => handleAdminAction({ action: 'reject_payment', bookingId: booking.id }, booking.id + '_rej')}
-                              className="btn btn-danger"
-                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto' }}
-                            >
-                              {actionLoadingId === booking.id + '_rej' ? '...' : 'Reject'}
-                            </button>
-                          </>
-                        )}
-                        {booking.status === 'paid' && (
-                          <button
-                            disabled={actionLoadingId !== null}
-                            onClick={() => handleAdminAction({ action: 'complete_booking', bookingId: booking.id }, booking.id + '_comp')}
-                            className="btn btn-primary"
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto', background: 'var(--accent)' }}
-                          >
-                            {actionLoadingId === booking.id + '_comp' ? '...' : 'Mark Completed (Inspection Done)'}
-                          </button>
-                        )}
+                         {booking.status === 'payment_pending' && (
+                           <>
+                             <button
+                               disabled={actionLoadingId === booking.id + '_app'}
+                               onClick={() => handleAdminAction({ action: 'approve_payment', bookingId: booking.id }, booking.id + '_app')}
+                               className="btn btn-secondary"
+                               style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto' }}
+                             >
+                               {actionLoadingId === booking.id + '_app' ? '...' : 'Approve Payment'}
+                             </button>
+                             <button
+                               disabled={actionLoadingId === booking.id + '_rej'}
+                               onClick={() => handleAdminAction({ action: 'reject_payment', bookingId: booking.id }, booking.id + '_rej')}
+                               className="btn btn-danger"
+                               style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto' }}
+                             >
+                               {actionLoadingId === booking.id + '_rej' ? '...' : 'Reject'}
+                             </button>
+                           </>
+                         )}
+                         {booking.status === 'paid' && (
+                           <button
+                             disabled={actionLoadingId === booking.id + '_comp'}
+                             onClick={() => handleAdminAction({ action: 'complete_booking', bookingId: booking.id }, booking.id + '_comp')}
+                             className="btn btn-primary"
+                             style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto', background: 'var(--accent)' }}
+                           >
+                             {actionLoadingId === booking.id + '_comp' ? '...' : 'Mark Completed (Inspection Done)'}
+                           </button>
+                         )}
                         {(booking.status === 'completed' || booking.status === 'rejected' || booking.status === 'requested') && (
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontStyle: 'italic' }}>
                             No action required
@@ -229,7 +230,7 @@ export default function AdminDashboard() {
                 {properties.map((property) => (
                   <tr key={property.id}>
                     <td>
-                      <img 
+                      <ImageWithFallback 
                         src={property.images.split(',')[0]} 
                         alt={property.title} 
                         style={{ width: '60px', height: '45px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }}
@@ -254,7 +255,7 @@ export default function AdminDashboard() {
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         {property.isSuspicious ? (
                           <button
-                            disabled={actionLoadingId !== null}
+                            disabled={actionLoadingId === property.id + '_flag'}
                             onClick={() => handleAdminAction({ action: 'unflag_property', propertyId: property.id }, property.id + '_flag')}
                             className="btn btn-outline"
                             style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto' }}
@@ -263,7 +264,7 @@ export default function AdminDashboard() {
                           </button>
                         ) : (
                           <button
-                            disabled={actionLoadingId !== null}
+                            disabled={actionLoadingId === property.id + '_flag'}
                             onClick={() => handleAdminAction({ action: 'flag_property', propertyId: property.id }, property.id + '_flag')}
                             className="btn btn-outline"
                             style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto', color: 'var(--danger)', borderColor: 'var(--danger)' }}
@@ -272,7 +273,7 @@ export default function AdminDashboard() {
                           </button>
                         )}
                         <button
-                          disabled={actionLoadingId !== null}
+                          disabled={actionLoadingId === property.id + '_del'}
                           onClick={() => handleAdminAction({ action: 'delete_property', propertyId: property.id }, property.id + '_del')}
                           className="btn btn-danger"
                           style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto' }}
@@ -316,7 +317,7 @@ export default function AdminDashboard() {
                     <td>{new Date(u.createdAt).toLocaleDateString()}</td>
                     <td>
                       <button
-                        disabled={actionLoadingId !== null || u.id === user.id}
+                        disabled={actionLoadingId === u.id + '_del' || u.id === user.id}
                         onClick={() => handleAdminAction({ action: 'delete_user', userId: u.id }, u.id + '_del')}
                         className="btn btn-danger"
                         style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto', opacity: u.id === user.id ? 0.4 : 1 }}
