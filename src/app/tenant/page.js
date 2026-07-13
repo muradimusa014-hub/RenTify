@@ -219,6 +219,7 @@ export default function TenantDashboard() {
                 display: 'grid',
                 gridTemplateColumns: '300px 1fr',
               }}
+              className="booking-card"
             >
               {/* Left Side: Property Preview */}
               <div style={{ position: 'relative', height: '100%', minHeight: '200px' }}>

@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Skeleton from '@/components/Skeleton';
 
 const ZARIA_AREAS = [
   'Samaru',
@@ -123,7 +124,18 @@ function ListingsContent() {
         <main>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '6rem 0', color: 'var(--text-light)' }}>
-              Searching properties...
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', width: '280px' }}>
+                    <Skeleton style={{ height: '200px', borderRadius: 0 }} />
+                    <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <Skeleton style={{ height: '0.75rem', width: '50%' }} />
+                      <Skeleton style={{ height: '1.1rem', width: '90%' }} />
+                      <Skeleton style={{ height: '1.25rem', width: '40%' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : properties.length === 0 ? (
             <div style={{

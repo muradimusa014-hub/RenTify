@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import Skeleton from '@/components/Skeleton';
+import Lightbox from '@/components/Lightbox';
 
 export default function PropertyDetail() {
   const { id } = useParams();
@@ -11,6 +13,8 @@ export default function PropertyDetail() {
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState('');
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -76,8 +80,20 @@ export default function PropertyDetail() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '6rem 0', color: 'var(--text-light)' }}>
-        Loading property details...
+      <div style={{ maxWidth: '900px', margin: '2rem auto', padding: '0 1.5rem' }}>
+        <Skeleton style={{ height: '2.5rem', width: '70%', marginBottom: '1rem' }} />
+        <Skeleton style={{ height: 'clamp(250px, 50vw, 450px)', width: '100%', marginBottom: '2rem' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <Skeleton style={{ height: '1.25rem', width: '100%' }} />
+            <Skeleton style={{ height: '1.25rem', width: '95%' }} />
+            <Skeleton style={{ height: '1.25rem', width: '90%' }} />
+          </div>
+          <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '2rem' }}>
+            <Skeleton style={{ height: '2rem', width: '60%', marginBottom: '1rem' }} />
+            <Skeleton style={{ height: '3rem', width: '100%' }} />
+          </div>
+        </div>
       </div>
     );
   }
@@ -109,8 +125,11 @@ export default function PropertyDetail() {
 
       {/* Image Gallery */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
-        <div style={{ width: '100%', height: 'clamp(250px, 50vw, 450px)', background: '#E2E8F0', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-          <img src={activeImage} alt={property.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <div
+          onClick={() => { setLightboxIndex(images.indexOf(activeImage) >= 0 ? images.indexOf(activeImage) : 0); setLightboxOpen(true); }}
+          style={{ width: '100%', height: 'clamp(250px, 50vw, 450px)', background: '#E2E8F0', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)', cursor: 'pointer' }}
+        >
+          <img src={activeImage} alt={property.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} />
         </div>
         
         {images.length > 1 && (
@@ -138,7 +157,16 @@ export default function PropertyDetail() {
         )}
       </div>
 
-      <div className="grid grid-cols-2" style={{ gridTemplateColumns: '1.5fr 1fr' }}>
+      {lightboxOpen && (
+        <Lightbox
+          images={images}
+          activeIndex={lightboxIndex}
+          onClose={() => setLightboxOpen(false)}
+          onNavigate={(idx) => { setLightboxIndex(idx); setActiveImage(images[idx]); }}
+        />
+      )}
+
+      <div className="property-detail-grid">
         {/* Description */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div>

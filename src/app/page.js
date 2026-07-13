@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Skeleton from '@/components/Skeleton';
 
 const ZARIA_AREAS = [
   'Samaru',
@@ -182,6 +183,19 @@ export default function Home() {
         ) : featured.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 0', background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-light)' }}>
             No properties listed yet. Landlords can register and start adding listings!
+          </div>
+        ) : loading ? (
+          <div className="grid grid-cols-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                <Skeleton style={{ height: '200px', borderRadius: 0 }} />
+                <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <Skeleton style={{ height: '1rem', width: '40%' }} />
+                  <Skeleton style={{ height: '1.25rem', width: '80%' }} />
+                  <Skeleton style={{ height: '1.5rem', width: '50%' }} />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-3">

@@ -1,7 +1,9 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from '@/context/AuthContext';
+import { ToastProvider } from '@/context/ToastContext';
 import Navbar from '@/components/Navbar';
+import ToastContainer from '@/components/ToastContainer';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,11 +25,13 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
-          <div className="app-container">
-            <Navbar />
-            <main className="main-content">
-              {children}
-            </main>
+          <ToastProvider>
+            <div className="app-container">
+              <Navbar />
+              <ToastContainer />
+              <main className="main-content">
+                {children}
+              </main>
             <footer style={{ borderTop: '1px solid var(--border)', padding: '2rem 1.5rem', textAlign: 'center', background: '#fff' }}>
               <div style={{ maxWidth: '1200px', margin: '0 auto', color: 'var(--text-light)', fontSize: '0.875rem' }}>
                 <p>&copy; {new Date().getFullYear()} Rentify. Secure Property Rentals in Zaria, Nigeria.</p>
@@ -35,6 +39,7 @@ export default function RootLayout({ children }) {
               </div>
             </footer>
           </div>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

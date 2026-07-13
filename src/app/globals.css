@@ -144,6 +144,61 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--primary-hover);
 }
 
+/* Mobile Nav */
+.mobile-toggle {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-toggle {
+    display: block;
+  }
+
+  .nav-links {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(8px);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    z-index: 99;
+  }
+
+  .nav-links-open {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .nav-links .nav-link,
+  .nav-links .nav-btn {
+    width: 100%;
+    text-align: left;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+  }
+
+  .nav-links .nav-btn {
+    margin-top: 0.5rem;
+    text-align: center;
+  }
+
+  .nav-links span {
+    display: none;
+  }
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -385,6 +440,18 @@ h1, h2, h3, h4, h5, h6 {
   padding: 2rem 1.5rem;
 }
 
+.property-detail-grid {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .property-detail-grid {
+    grid-template-columns: 1.5fr 1fr;
+  }
+}
+
 .dashboard-header {
   display: flex;
   flex-direction: column;
@@ -457,6 +524,17 @@ h1, h2, h3, h4, h5, h6 {
   border-bottom: none;
 }
 
+/* Toast Animations */
+@keyframes toastSlide {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* Mobile-first Media Queries */
 @media (max-width: 767px) {
   .grid-cols-2, .grid-cols-3 {
@@ -473,6 +551,13 @@ h1, h2, h3, h4, h5, h6 {
   }
   .dashboard-header {
     align-items: flex-start;
+  }
+  .booking-card {
+    grid-template-columns: 1fr !important;
+  }
+  .booking-card > div:first-child {
+    min-height: 200px;
+    max-height: 250px;
   }
 }
 
