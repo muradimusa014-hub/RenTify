@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import Link from 'next/link';
 import ImageWithFallback from '@/components/ImageWithFallback';
 
@@ -19,6 +20,7 @@ const ZARIA_AREAS = [
 
 export default function LandlordDashboard() {
   const { user } = useAuth();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('listings'); // 'listings' | 'bookings'
   const [properties, setProperties] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -142,9 +144,12 @@ export default function LandlordDashboard() {
       }
 
       setIsModalOpen(false);
+      toast.addToast(editingProperty ? 'Property updated successfully' : 'Property listed successfully', 'success');
       await loadData();
     } catch (err) {
-      setFormError(err.message);
+      const msg = err.message;
+      setFormError(msg);
+      toast.addToast(msg, 'error');
     } finally {
       setFormLoading(false);
     }
@@ -160,9 +165,11 @@ export default function LandlordDashboard() {
         method: 'DELETE',
       });
       if (res.ok) {
+        toast.addToast('Property deleted successfully', 'success');
         await loadData();
       } else {
         const data = await res.json();
+        toast.addToast(data.error || 'Failed to delete listing', 'error');
         alert(data.error || 'Failed to delete listing');
       }
     } catch (err) {

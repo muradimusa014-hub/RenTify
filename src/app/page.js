@@ -191,6 +191,19 @@ export default function Home() {
             ))}
           </div>
         ) : featured.length === 0 ? (
+          <div style={{
+            background: '#fff',
+            border: '1px dashed var(--border)',
+            borderRadius: 'var(--radius)',
+            padding: '3rem 1.5rem',
+            textAlign: 'center',
+            color: 'var(--text-light)'
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🏠</div>
+            <p style={{ fontWeight: 600, color: 'var(--primary)' }}>No properties listed yet</p>
+            <p style={{ fontSize: '0.9rem', marginTop: '0.25rem' }}>Check back soon — new rentals in Zaria are added regularly.</p>
+          </div>
+        ) : (
           <div className="grid grid-cols-3">
             {featured.map((property) => (
               <Link href={`/properties/${property.id}`} key={property.id} className="property-card">

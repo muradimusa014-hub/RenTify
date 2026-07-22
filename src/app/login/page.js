@@ -2,11 +2,14 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useToast } from '@/context/ToastContext';
 
 function LoginForm() {
   const { login } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const toast = useToast();
   const redirect = searchParams.get('redirect') || '';
 
   const [email, setEmail] = useState('');
@@ -21,6 +24,7 @@ function LoginForm() {
     const res = await login(email, password);
     if (!res.success) {
       setError(res.error);
+      toast.addToast(res.error, 'error');
       setLoading(false);
     } else {
       if (redirect) {

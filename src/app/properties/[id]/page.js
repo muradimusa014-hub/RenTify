@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import Skeleton from '@/components/Skeleton';
 import Lightbox from '@/components/Lightbox';
 import ImageWithFallback from '@/components/ImageWithFallback';
@@ -10,6 +11,7 @@ export default function PropertyDetail() {
   const { id } = useParams();
   const { user } = useAuth();
   const router = useRouter();
+  const toast = useToast();
 
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -62,18 +64,21 @@ export default function PropertyDetail() {
         body: JSON.stringify({ propertyId: id }),
       });
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || 'Failed to request booking');
       }
+
       setBookingSuccess(true);
-      
-      // Redirect to tenant portal to make payment
+      toast.addToast('Booking requested! Redirecting to dashboard...', 'success');
+
       setTimeout(() => {
         router.push('/tenant');
       }, 1500);
     } catch (err) {
-      setBookingError(err.message);
+      const msg = err.message;
+      setBookingError(msg);
+      toast.addToast(msg, 'error');
     } finally {
       setBookingLoading(false);
     }

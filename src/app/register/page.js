@@ -2,19 +2,40 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/context/ToastContext';
 
 export default function Register() {
   const router = useRouter();
+  const toast = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('tenant'); // 'tenant' or 'landlord'
+  const [role, setRole] = useState('tenant');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const validateEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!validateEmail(email)) {
+      const msg = 'Please enter a valid email address';
+      setError(msg);
+      toast.addToast(msg, 'error');
+      return;
+    }
+
+    if (password.length < 8) {
+      const msg = 'Password must be at least 8 characters';
+      setError(msg);
+      toast.addToast(msg, 'error');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -23,18 +44,22 @@ export default function Register() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, role }),
       });
-      
+
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Registration failed');
       }
 
       setSuccess(true);
+      toast.addToast('Account created! Redirecting to login...', 'success');
       setTimeout(() => {
         router.push('/login');
       }, 1500);
     } catch (err) {
-      setError(err.message);
+      const msg = err.message;
+      setError(msg);
+      toast.addToast(msg, 'error');
+    } finally {
       setLoading(false);
     }
   };

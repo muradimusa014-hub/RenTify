@@ -1,37 +1,31 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import Link from 'next/link';
-import ImageWithFallback from '@/components/ImageWithFallback';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'properties' | 'users'
-  const [users, setUsers] = useState([]);
-  const [properties, setProperties] = useState([]);
-  const [bookings, setBookings] = useState([]);
+  const [activeTab, setActiveTab] = useState('bookings');
+  const [data, setData] = useState({ users: [], properties: [], bookings: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  // Action processing state
-  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState('');
 
   const loadData = async () => {
     setLoading(true);
     setError('');
     try {
       const res = await fetch('/api/admin');
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to load admin logs');
+      if (res.ok) {
+        const result = await res.json();
+        setData(result);
+      } else {
+        const result = await res.json();
+        setError(result.error || 'Failed to load admin data');
       }
-      const data = await res.json();
-      setUsers(data.users || []);
-      setProperties(data.properties || []);
-      setBookings(data.bookings || []);
     } catch (err) {
       console.error(err);
-      setError(err.message);
+      setError('Server connection error');
     } finally {
       setLoading(false);
     }
@@ -41,296 +35,354 @@ export default function AdminDashboard() {
     loadData();
   }, []);
 
-  const handleAdminAction = async (payload, identifier) => {
-    if (payload.action === 'delete_user' && !confirm('Are you sure you want to delete this user? This is permanent.')) return;
-    if (payload.action === 'delete_property' && !confirm('Are you sure you want to delete this listing?')) return;
-    
-    setActionLoadingId(identifier);
+  const handleAdminAction = async (action, id) => {
+    setActionLoading(true);
+    setActionMessage('');
     try {
+      const body = { action };
+      if (['approve_payment', 'reject_payment', 'complete_booking'].includes(action)) {
+        body.bookingId = id;
+      } else if (['flag_property', 'unflag_property', 'delete_property'].includes(action)) {
+        body.propertyId = id;
+      } else if (action === 'delete_user') {
+        body.userId = id;
+      }
+
       const res = await fetch('/api/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
 
-      const data = await res.json();
+      const result = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Action failed');
+        throw new Error(result.error || 'Action failed');
       }
 
+      setActionMessage(result.message);
       await loadData();
     } catch (err) {
-      alert('Error: ' + err.message);
+      setActionMessage(err.message);
     } finally {
-      setActionLoadingId(null);
+      setActionLoading(false);
     }
+  };
+
+  const getStatusBadgeClass = (status) => {
+    const map = {
+      requested: 'badge-requested',
+      payment_pending: 'badge-payment_pending',
+      paid: 'badge-paid',
+      completed: 'badge-completed',
+      rejected: 'badge-rejected',
+      available: 'badge-available',
+      pending: 'badge-pending',
+      taken: 'badge-taken',
+    };
+    return map[status] || 'badge-available';
   };
 
   return (
     <div className="dashboard-container">
-      <div className="dashboard-header" style={{ marginBottom: '2.5rem' }}>
+      <div className="dashboard-header" style={{ marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Admin Platform Console</h1>
-          <p style={{ color: 'var(--text-light)', fontSize: '0.95rem' }}>Verify manual payments, complete booking inspection loops, and audit system properties or users.</p>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Admin Panel</h1>
+          <p style={{ color: 'var(--text-light)', fontSize: '0.95rem' }}>Manage users, properties, and booking verifications across Rentify Zaria.</p>
         </div>
-        <button onClick={loadData} className="btn btn-outline btn-auto">
-          🔄 Refresh Console
+        <button onClick={loadData} className="btn btn-secondary btn-auto" disabled={loading}>
+          Refresh
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="tabs-nav" style={{ marginBottom: '2rem' }}>
-        <button 
-          onClick={() => setActiveTab('bookings')}
-          className={`tab-btn ${activeTab === 'bookings' ? 'active' : ''}`}
-        >
-          Bookings & Receipts ({bookings.length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('properties')}
-          className={`tab-btn ${activeTab === 'properties' ? 'active' : ''}`}
-        >
-          Property Listings ({properties.length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('users')}
-          className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
-        >
-          User Accounts ({users.length})
-        </button>
-      </div>
+      {/* Stats */}
+      {!loading && !error && (
+        <div className="stats-grid" style={{ marginBottom: '2rem' }}>
+          <div className="stat-card">
+            <div className="stat-icon">👥</div>
+            <div className="stat-info">
+              <span className="stat-label">Total Users</span>
+              <span className="stat-value">{data.users.length}</span>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--secondary)' }}>🏢</div>
+            <div className="stat-info">
+              <span className="stat-label">Total Properties</span>
+              <span className="stat-value">{data.properties.length}</span>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: 'var(--highlight)' }}>📋</div>
+            <div className="stat-info">
+              <span className="stat-label">Pending Payments</span>
+              <span className="stat-value">{data.bookings.filter(b => b.status === 'payment_pending').length}</span>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: 'rgba(34, 197, 94, 0.1)', color: 'var(--accent)' }}>✓</div>
+            <div className="stat-info">
+              <span className="stat-label">Completed Bookings</span>
+              <span className="stat-value">{data.bookings.filter(b => b.status === 'completed').length}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {actionMessage && (
+        <div style={{
+          background: actionMessage.includes('successfully') || actionMessage.includes('marked') || actionMessage.includes('flagged') ? '#DCFCE7' : '#FEE2E2',
+          color: actionMessage.includes('successfully') || actionMessage.includes('marked') || actionMessage.includes('flagged') ? '#15803D' : '#B91C1C',
+          padding: '1rem',
+          borderRadius: 'var(--radius)',
+          marginBottom: '1.5rem',
+          fontWeight: 500,
+          fontSize: '0.95rem',
+        }}>
+          {actionMessage.includes('successfully') || actionMessage.includes('marked') || actionMessage.includes('flagged') ? '✓' : '✗'} {actionMessage}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-light)' }}>
-          Loading administrative console...
+          Loading admin dashboard...
         </div>
       ) : error ? (
-        <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '1.25rem', borderRadius: 'var(--radius)', fontWeight: 500 }}>
+        <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '1rem', borderRadius: 'var(--radius)' }}>
           ✗ {error}
         </div>
-      ) : activeTab === 'bookings' ? (
-        /* Bookings Tab */
-        bookings.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-light)' }}>No bookings found in database logs.</div>
-        ) : (
-          <div className="table-wrapper">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Property</th>
-                  <th>Tenant</th>
-                  <th>Status</th>
-                  <th>Receipt Screenshot</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bookings.map((booking) => (
+      ) : (
+        <div className="tabs-nav" style={{ marginBottom: '1.5rem' }}>
+          <button
+            onClick={() => setActiveTab('bookings')}
+            className={`tab-btn ${activeTab === 'bookings' ? 'active' : ''}`}
+          >
+            Payment Reviews ({data.bookings.filter(b => b.status === 'payment_pending').length})
+          </button>
+          <button
+            onClick={() => setActiveTab('properties')}
+            className={`tab-btn ${activeTab === 'properties' ? 'active' : ''}`}
+          >
+            Properties ({data.properties.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
+          >
+            Users ({data.users.length})
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && activeTab === 'bookings' && (
+        <div className="table-wrapper">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Property</th>
+                <th>Tenant</th>
+                <th>Status</th>
+                <th>Receipt</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.bookings.length === 0 ? (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No bookings yet.</td></tr>
+              ) : (
+                data.bookings.map((booking) => (
                   <tr key={booking.id}>
                     <td>
-                      <div>
-                        <Link href={`/properties/${booking.property.id}`} style={{ fontWeight: 600, color: 'var(--primary)' }}>
-                          {booking.property.title}
-                        </Link>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>
-                          📍 {booking.property.location} • ₦{booking.property.price.toLocaleString()}/yr
-                        </div>
-                      </div>
+                      <strong>{booking.property.title}</strong>
+                      <br />
+                      <small style={{ color: 'var(--text-light)' }}>{booking.property.location}</small>
                     </td>
                     <td>{booking.tenant.email}</td>
                     <td>
-                      <span className={`badge badge-${booking.status}`}>{booking.status.replace('_', ' ')}</span>
+                      <span className={`badge ${getStatusBadgeClass(booking.status)}`}>
+                        {booking.status.replace('_', ' ')}
+                      </span>
                     </td>
                     <td>
                       {booking.receiptImage ? (
-                        <a 
-                          href={booking.receiptImage} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            color: 'var(--secondary)',
-                            fontWeight: 600,
-                            fontSize: '0.85rem',
-                            textDecoration: 'underline'
-                          }}
-                        >
-                          🖼 View Receipt Image
+                        <a href={booking.receiptImage} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--secondary)', fontWeight: 600, fontSize: '0.85rem' }}>
+                          View Receipt
                         </a>
                       ) : (
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>Not uploaded</span>
+                        <span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>N/A</span>
                       )}
                     </td>
+                    <td style={{ fontSize: '0.85rem' }}>{new Date(booking.createdAt).toLocaleDateString()}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                         {booking.status === 'payment_pending' && (
-                           <>
-                             <button
-                               disabled={actionLoadingId === booking.id + '_app'}
-                               onClick={() => handleAdminAction({ action: 'approve_payment', bookingId: booking.id }, booking.id + '_app')}
-                               className="btn btn-secondary"
-                               style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto' }}
-                             >
-                               {actionLoadingId === booking.id + '_app' ? '...' : 'Approve Payment'}
-                             </button>
-                             <button
-                               disabled={actionLoadingId === booking.id + '_rej'}
-                               onClick={() => handleAdminAction({ action: 'reject_payment', bookingId: booking.id }, booking.id + '_rej')}
-                               className="btn btn-danger"
-                               style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto' }}
-                             >
-                               {actionLoadingId === booking.id + '_rej' ? '...' : 'Reject'}
-                             </button>
-                           </>
-                         )}
-                         {booking.status === 'paid' && (
-                           <button
-                             disabled={actionLoadingId === booking.id + '_comp'}
-                             onClick={() => handleAdminAction({ action: 'complete_booking', bookingId: booking.id }, booking.id + '_comp')}
-                             className="btn btn-primary"
-                             style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto', background: 'var(--accent)' }}
-                           >
-                             {actionLoadingId === booking.id + '_comp' ? '...' : 'Mark Completed (Inspection Done)'}
-                           </button>
-                         )}
-                        {(booking.status === 'completed' || booking.status === 'rejected' || booking.status === 'requested') && (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontStyle: 'italic' }}>
-                            No action required
-                          </span>
-                        )}
-                      </div>
+                      {booking.status === 'payment_pending' && (
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => handleAdminAction('approve_payment', booking.id)}
+                            disabled={actionLoading}
+                            className="btn btn-primary"
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', width: 'auto' }}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleAdminAction('reject_payment', booking.id)}
+                            disabled={actionLoading}
+                            className="btn btn-danger"
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', width: 'auto' }}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                      {booking.status === 'paid' && (
+                        <button
+                          onClick={() => handleAdminAction('complete_booking', booking.id)}
+                          disabled={actionLoading}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', width: 'auto' }}
+                        >
+                          Mark Inspected
+                        </button>
+                      )}
+                      {(booking.status === 'requested' || booking.status === 'completed' || booking.status === 'rejected') && (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>No actions</span>
+                      )}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-      ) : activeTab === 'properties' ? (
-        /* Properties Tab */
-        properties.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-light)' }}>No properties in database logs.</div>
-        ) : (
-          <div className="table-wrapper">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Preview</th>
-                  <th>Listing Title</th>
-                  <th>Location</th>
-                  <th>Price</th>
-                  <th>Owner</th>
-                  <th>Security Flags</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {properties.map((property) => (
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!loading && !error && activeTab === 'properties' && (
+        <div className="table-wrapper">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Owner</th>
+                <th>Location</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Flagged</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.properties.length === 0 ? (
+                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No properties yet.</td></tr>
+              ) : (
+                data.properties.map((property) => (
                   <tr key={property.id}>
-                    <td>
-                      <ImageWithFallback 
-                        src={property.images.split(',')[0]} 
-                        alt={property.title} 
-                        style={{ width: '60px', height: '45px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }}
-                      />
-                    </td>
-                    <td>
-                      <Link href={`/properties/${property.id}`} style={{ fontWeight: 600, color: 'var(--primary)' }}>
-                        {property.title}
-                      </Link>
-                    </td>
+                    <td><strong>{property.title}</strong></td>
+                    <td>{property.owner.email}</td>
                     <td>{property.location}</td>
                     <td>₦{property.price.toLocaleString()}</td>
-                    <td>{property.owner.email}</td>
+                    <td>
+                      <span className={`badge ${getStatusBadgeClass(property.status)}`}>
+                        {property.status}
+                      </span>
+                    </td>
                     <td>
                       {property.isSuspicious ? (
-                        <span className="badge badge-rejected">🚩 Suspicious / Hidden</span>
+                        <span className="badge badge-rejected">⚠ Flagged</span>
                       ) : (
-                        <span className="badge badge-available">✓ Clear</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Clean</span>
                       )}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        {property.isSuspicious ? (
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {!property.isSuspicious ? (
                           <button
-                            disabled={actionLoadingId === property.id + '_flag'}
-                            onClick={() => handleAdminAction({ action: 'unflag_property', propertyId: property.id }, property.id + '_flag')}
+                            onClick={() => handleAdminAction('flag_property', property.id)}
+                            disabled={actionLoading}
                             className="btn btn-outline"
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto' }}
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', width: 'auto' }}
                           >
-                            Unflag
+                            Flag
                           </button>
                         ) : (
                           <button
-                            disabled={actionLoadingId === property.id + '_flag'}
-                            onClick={() => handleAdminAction({ action: 'flag_property', propertyId: property.id }, property.id + '_flag')}
-                            className="btn btn-outline"
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                            onClick={() => handleAdminAction('unflag_property', property.id)}
+                            disabled={actionLoading}
+                            className="btn btn-secondary"
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', width: 'auto' }}
                           >
-                            Flag Suspicious
+                            Unflag
                           </button>
                         )}
                         <button
-                          disabled={actionLoadingId === property.id + '_del'}
-                          onClick={() => handleAdminAction({ action: 'delete_property', propertyId: property.id }, property.id + '_del')}
+                          onClick={() => {
+                            if (confirm('Delete this property and all related data?')) {
+                              handleAdminAction('delete_property', property.id);
+                            }
+                          }}
+                          disabled={actionLoading}
                           className="btn btn-danger"
-                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto' }}
+                          style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', width: 'auto' }}
                         >
                           Delete
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-      ) : (
-        /* Users Tab */
-        users.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-light)' }}>No users in database logs.</div>
-        ) : (
-          <div className="table-wrapper">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>User ID</th>
-                  <th>Email</th>
-                  <th>Registered Role</th>
-                  <th>Created Date</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!loading && !error && activeTab === 'users' && (
+        <div className="table-wrapper">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.users.length === 0 ? (
+                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No users yet.</td></tr>
+              ) : (
+                data.users.map((u) => (
                   <tr key={u.id}>
-                    <td style={{ fontSize: '0.75rem', color: 'var(--text-light)', fontFamily: 'monospace' }}>{u.id}</td>
-                    <td style={{ fontWeight: 600 }}>{u.email}</td>
+                    <td><strong>{u.email}</strong></td>
                     <td>
-                      <span className={`badge ${u.role === 'admin' ? 'badge-completed' : u.role === 'landlord' ? 'badge-pending' : 'badge-requested'}`}>
+                      <span className={`badge badge-${u.role === 'admin' ? 'paid' : u.role === 'landlord' ? 'pending' : 'requested'}`}>
                         {u.role}
                       </span>
                     </td>
-                    <td>{new Date(u.createdAt).toLocaleDateString()}</td>
+                    <td style={{ fontSize: '0.85rem' }}>{new Date(u.createdAt).toLocaleDateString()}</td>
                     <td>
-                      <button
-                        disabled={actionLoadingId === u.id + '_del' || u.id === user.id}
-                        onClick={() => handleAdminAction({ action: 'delete_user', userId: u.id }, u.id + '_del')}
-                        className="btn btn-danger"
-                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', width: 'auto', opacity: u.id === user.id ? 0.4 : 1 }}
-                      >
-                        {u.id === user.id ? 'Self' : 'Delete User'}
-                      </button>
+                      {u.id !== user.id ? (
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete user ${u.email}? This cannot be undone.`)) {
+                              handleAdminAction('delete_user', u.id);
+                            }
+                          }}
+                          disabled={actionLoading}
+                          className="btn btn-danger"
+                          style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', width: 'auto' }}
+                        >
+                          Delete
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>You</span>
+                      )}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

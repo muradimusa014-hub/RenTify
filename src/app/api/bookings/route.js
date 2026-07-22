@@ -94,9 +94,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
     }
 
-    if (property.status === 'taken') {
+    if (property.status === 'taken' || property.status === 'pending') {
       return NextResponse.json(
-        { error: 'Property is already rented' },
+        { error: property.status === 'taken' ? 'Property is already rented' : 'This property has a pending booking request' },
         { status: 400 }
       );
     }

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import Link from 'next/link';
 import ImageWithFallback from '@/components/ImageWithFallback';
 
@@ -58,6 +59,7 @@ function BookingStepper({ status }) {
 
 export default function TenantDashboard() {
   const { user } = useAuth();
+  const toast = useToast();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -121,12 +123,15 @@ export default function TenantDashboard() {
       }
 
       setUploadSuccess(true);
+      toast.addToast('Receipt uploaded successfully!', 'success');
       setReceiptFile(null);
       setUploadingId(null);
       // Reload bookings
       await fetchBookings();
     } catch (err) {
-      setUploadError(err.message);
+      const msg = err.message;
+      setUploadError(msg);
+      toast.addToast(msg, 'error');
     }
   };
 
