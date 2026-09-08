@@ -51,9 +51,9 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error('Registration Error:', error);
-    return NextResponse.json(
-      { error: 'Something went wrong on the server' },
-      { status: 500 }
-    );
+    const message = process.env.NODE_ENV === 'production'
+      ? 'Something went wrong on the server'
+      : (error.message || 'Something went wrong on the server');
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

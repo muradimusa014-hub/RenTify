@@ -32,6 +32,7 @@ export default function ImageWithFallback({ src, alt, className, style, ...props
       className={className}
       style={style}
       onError={() => setError(true)}
+      loading="lazy"
       {...props}
     />
   );

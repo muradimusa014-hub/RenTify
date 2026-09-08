@@ -5,6 +5,11 @@ import prisma from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { saveFile } from '@/lib/upload';
 
+const ZARIA_AREAS = [
+  'Samaru', 'Sabon Gari', 'Gyellesu', 'Tudun Wada',
+  'Zaria City', 'GRA', 'Kongo', 'Danmagaji', 'Shika', 'Palladan'
+];
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -14,6 +19,7 @@ export async function GET(request) {
     const ownerId = searchParams.get('ownerId');
 
     const filter = {
+      status: 'available',
       isSuspicious: false, // Don't show flagged properties
     };
 
@@ -29,7 +35,8 @@ export async function GET(request) {
 
     if (ownerId) {
       filter.ownerId = ownerId;
-      // Landlords can view their own flagged listings
+      // Landlords can view their own listings regardless of status
+      delete filter.status;
       delete filter.isSuspicious;
     }
 
@@ -46,6 +53,9 @@ export async function GET(request) {
     return NextResponse.json({ properties });
   } catch (error) {
     console.error('Fetch Properties Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -72,6 +82,13 @@ export async function POST(request) {
     if (!title || !description || isNaN(price) || !location) {
       return NextResponse.json(
         { error: 'Title, description, price, and location are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!ZARIA_AREAS.includes(location)) {
+      return NextResponse.json(
+        { error: 'Invalid Zaria location area selected' },
         { status: 400 }
       );
     }
@@ -113,6 +130,9 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error('Create Property Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

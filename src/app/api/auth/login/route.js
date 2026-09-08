@@ -60,6 +60,12 @@ export async function POST(request) {
     return response;
   } catch (error) {
     console.error('Login Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json(
+        { error: 'Unable to connect to database. Please try again later or contact support.' },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: 'Something went wrong on the server' },
       { status: 500 }

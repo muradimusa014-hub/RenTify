@@ -8,11 +8,13 @@ import ToastContainer from '@/components/ToastContainer';
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata = {
@@ -32,10 +34,10 @@ export default function RootLayout({ children }) {
               <main className="main-content">
                 {children}
               </main>
-            <footer style={{ borderTop: '1px solid var(--border)', padding: '2rem 1.5rem', textAlign: 'center', background: '#fff' }}>
-              <div style={{ maxWidth: '1200px', margin: '0 auto', color: 'var(--text-light)', fontSize: '0.875rem' }}>
+            <footer style={{ borderTop: '1px solid var(--border)', padding: '2rem 1.5rem', textAlign: 'center', background: 'var(--primary)', color: '#fff' }}>
+              <div style={{ maxWidth: '1200px', margin: '0 auto', fontSize: '0.875rem' }}>
                 <p>&copy; {new Date().getFullYear()} Rentify. Secure Property Rentals in Zaria, Nigeria.</p>
-                <p style={{ marginTop: '0.25rem', fontSize: '0.75rem' }}>Samaru • Sabon Gari • Gyellesu • Tudun Wada • Zaria City • GRA • Kongo</p>
+                <p style={{ marginTop: '0.25rem', fontSize: '0.75rem', opacity: 0.8 }}>Samaru • Sabon Gari • Gyellesu • Tudun Wada • Zaria City • GRA • Kongo</p>
               </div>
             </footer>
           </div>

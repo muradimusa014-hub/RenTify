@@ -60,6 +60,9 @@ export async function GET(request) {
     return NextResponse.json({ bookings });
   } catch (error) {
     console.error('Fetch Bookings Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -137,6 +140,9 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error('Create Booking Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

@@ -27,8 +27,9 @@ function LoginForm() {
       toast.addToast(res.error, 'error');
       setLoading(false);
     } else {
+      setLoading(false);
       if (redirect) {
-        window.location.href = decodeURIComponent(redirect);
+        router.push(decodeURIComponent(redirect));
       } else if (res.user) {
         const rolePaths = { admin: '/admin', landlord: '/landlord', tenant: '/tenant' };
         router.push(rolePaths[res.user.role] || '/');

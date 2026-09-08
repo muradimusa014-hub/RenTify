@@ -5,6 +5,11 @@ import prisma from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { saveFile, deleteFile } from '@/lib/upload';
 
+const ZARIA_AREAS = [
+  'Samaru', 'Sabon Gari', 'Gyellesu', 'Tudun Wada',
+  'Zaria City', 'GRA', 'Kongo', 'Danmagaji', 'Shika', 'Palladan'
+];
+
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
@@ -24,6 +29,9 @@ export async function GET(request, { params }) {
     return NextResponse.json({ property });
   } catch (error) {
     console.error('Fetch Property Detail Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -60,6 +68,13 @@ export async function PUT(request, { params }) {
     const price = parseFloat(formData.get('price'));
     const location = formData.get('location');
     const status = formData.get('status');
+
+    if (location && !ZARIA_AREAS.includes(location)) {
+      return NextResponse.json(
+        { error: 'Invalid Zaria location area selected' },
+        { status: 400 }
+      );
+    }
 
     let imagesList = property.images.split(',');
 
@@ -100,6 +115,9 @@ export async function PUT(request, { params }) {
     });
   } catch (error) {
     console.error('Update Property Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -149,6 +167,9 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ message: 'Property deleted successfully' });
   } catch (error) {
     console.error('Delete Property Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

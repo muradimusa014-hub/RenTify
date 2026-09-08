@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { usePathname } from 'next/navigation';
@@ -8,13 +8,45 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   const isActive = (path) => pathname === path;
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
 
-  const closeMobile = () => setMobileOpen(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') closeMobile();
+    };
+
+    const handleClickOutside = (e) => {
+      const navLinks = document.querySelector('.nav-links');
+      const toggle = document.querySelector('.mobile-toggle');
+      if (mobileOpen && navLinks && !navLinks.contains(e.target) && !toggle.contains(e.target)) {
+        closeMobile();
+      }
+    };
+
+    if (mobileOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [mobileOpen, closeMobile]);
 
   return (
-    <nav className="navbar">
+    <nav className={`navbar ${scrolled ? 'nav-scrolled' : ''}`}>
       <div className="navbar-container">
         <Link href="/" className="logo" onClick={closeMobile}>
           Rent<span className="logo-accent">ify</span>

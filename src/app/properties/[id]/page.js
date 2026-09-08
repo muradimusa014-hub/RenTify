@@ -120,6 +120,12 @@ export default function PropertyDetail() {
 
   return (
     <div style={{ maxWidth: '900px', margin: '2rem auto', padding: '0 1.5rem' }}>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <button onClick={() => router.back()} className="btn btn-outline btn-auto" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+          ← Back
+        </button>
+      </div>
+
       {/* Header Info */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>

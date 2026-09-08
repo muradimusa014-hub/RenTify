@@ -50,6 +50,9 @@ export async function GET(request) {
     return NextResponse.json({ users, properties, bookings });
   } catch (error) {
     console.error('Fetch Admin Data Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -250,6 +253,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
     console.error('Admin Action Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

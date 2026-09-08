@@ -42,6 +42,9 @@ export async function GET(request, { params }) {
     return NextResponse.json({ booking });
   } catch (error) {
     console.error('Fetch Booking Detail Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -108,6 +111,64 @@ export async function PUT(request, { params }) {
     });
   } catch (error) {
     console.error('Upload Receipt Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const { id } = await params;
+    const tokenCookie = request.cookies.get('rentify_token');
+    const token = tokenCookie ? tokenCookie.value : null;
+    const user = token ? await verifyToken(token) : null;
+
+    if (!user || user.role !== 'tenant') {
+      return NextResponse.json(
+        { error: 'Unauthorized. Tenants only.' },
+        { status: 401 }
+      );
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { id },
+      include: { property: true },
+    });
+
+    if (!booking) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+
+    if (booking.tenantId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden. You do not own this booking.' },
+        { status: 403 }
+      );
+    }
+
+    if (booking.status !== 'requested') {
+      return NextResponse.json(
+        { error: 'Only requested bookings can be cancelled' },
+        { status: 400 }
+      );
+    }
+
+    await prisma.$transaction([
+      prisma.booking.delete({ where: { id } }),
+      prisma.property.update({
+        where: { id: booking.propertyId },
+        data: { status: 'available' },
+      }),
+    ]);
+
+    return NextResponse.json({ message: 'Booking cancelled successfully' });
+  } catch (error) {
+    console.error('Cancel Booking Error:', error);
+    if (error.message && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

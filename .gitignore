@@ -2,3 +2,6 @@
 node_modules
 .next
 .vercel
+dev.db
+prisma/dev.db
+*.db

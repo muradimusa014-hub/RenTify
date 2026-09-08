@@ -1,15 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('bookings');
   const [data, setData] = useState({ users: [], properties: [], bookings: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-  const [actionMessage, setActionMessage] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -37,7 +38,6 @@ export default function AdminDashboard() {
 
   const handleAdminAction = async (action, id) => {
     setActionLoading(true);
-    setActionMessage('');
     try {
       const body = { action };
       if (['approve_payment', 'reject_payment', 'complete_booking'].includes(action)) {
@@ -59,10 +59,11 @@ export default function AdminDashboard() {
         throw new Error(result.error || 'Action failed');
       }
 
-      setActionMessage(result.message);
+      const isSuccess = result.message.includes('successfully') || result.message.includes('marked') || result.message.includes('flagged');
+      toast.addToast(result.message, isSuccess ? 'success' : 'error');
       await loadData();
     } catch (err) {
-      setActionMessage(err.message);
+      toast.addToast(err.message, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -125,20 +126,6 @@ export default function AdminDashboard() {
               <span className="stat-value">{data.bookings.filter(b => b.status === 'completed').length}</span>
             </div>
           </div>
-        </div>
-      )}
-
-      {actionMessage && (
-        <div style={{
-          background: actionMessage.includes('successfully') || actionMessage.includes('marked') || actionMessage.includes('flagged') ? '#DCFCE7' : '#FEE2E2',
-          color: actionMessage.includes('successfully') || actionMessage.includes('marked') || actionMessage.includes('flagged') ? '#15803D' : '#B91C1C',
-          padding: '1rem',
-          borderRadius: 'var(--radius)',
-          marginBottom: '1.5rem',
-          fontWeight: 500,
-          fontSize: '0.95rem',
-        }}>
-          {actionMessage.includes('successfully') || actionMessage.includes('marked') || actionMessage.includes('flagged') ? '✓' : '✗'} {actionMessage}
         </div>
       )}
 
@@ -354,7 +341,7 @@ export default function AdminDashboard() {
                   <tr key={u.id}>
                     <td><strong>{u.email}</strong></td>
                     <td>
-                      <span className={`badge badge-${u.role === 'admin' ? 'paid' : u.role === 'landlord' ? 'pending' : 'requested'}`}>
+                      <span className={`badge badge-${u.role}`}>
                         {u.role}
                       </span>
                     </td>

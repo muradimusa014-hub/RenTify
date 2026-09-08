@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import Link from 'next/link';
+import Skeleton from '@/components/Skeleton';
 import ImageWithFallback from '@/components/ImageWithFallback';
 
 function BookingStepper({ status }) {
@@ -17,10 +18,10 @@ function BookingStepper({ status }) {
   ];
 
   const getStepState = (stepIdx) => {
-    let activeIdx = 0;
-    if (status === 'requested') activeIdx = 0;
-    else if (status === 'payment_pending') activeIdx = 1;
-    else if (status === 'paid') activeIdx = 2;
+    let activeIdx = 1;
+    if (status === 'requested') activeIdx = 1;
+    else if (status === 'payment_pending') activeIdx = 2;
+    else if (status === 'paid') activeIdx = 3;
     else if (status === 'completed') activeIdx = 4;
 
     if (status === 'completed') return 'completed';
@@ -30,9 +31,9 @@ function BookingStepper({ status }) {
   };
 
   const getLineFillWidth = () => {
-    if (status === 'requested') return '0%';
-    if (status === 'payment_pending') return '25%';
-    if (status === 'paid') return '50%';
+    if (status === 'requested') return '25%';
+    if (status === 'payment_pending') return '50%';
+    if (status === 'paid') return '75%';
     if (status === 'completed') return '100%';
     return '0%';
   };
@@ -63,10 +64,30 @@ export default function TenantDashboard() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
+  const handleCancelBooking = async (bookingId) => {
+    if (!confirm('Are you sure you want to cancel this booking request? The property will become available again.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to cancel booking');
+      }
+      toast.addToast('Booking cancelled', 'success');
+      await fetchBookings();
+    } catch (err) {
+      toast.addToast(err.message, 'error');
+    }
+  };
+
   // Receipt upload state
   const [uploadingId, setUploadingId] = useState(null);
-  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptFiles, setReceiptFiles] = useState({});
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
@@ -92,14 +113,15 @@ export default function TenantDashboard() {
     fetchBookings();
   }, []);
 
-  const handleFileChange = (e) => {
-    setReceiptFile(e.target.files[0]);
+  const handleFileChange = (e, bookingId) => {
+    setReceiptFiles(prev => ({ ...prev, [bookingId]: e.target.files[0] }));
     setUploadError('');
     setUploadSuccess(false);
   };
 
   const handleUploadReceipt = async (e, bookingId) => {
     e.preventDefault();
+    const receiptFile = receiptFiles[bookingId];
     if (!receiptFile) {
       setUploadError('Please select a receipt image first');
       return;
@@ -124,7 +146,11 @@ export default function TenantDashboard() {
 
       setUploadSuccess(true);
       toast.addToast('Receipt uploaded successfully!', 'success');
-      setReceiptFile(null);
+      setReceiptFiles(prev => {
+        const next = { ...prev };
+        delete next[bookingId];
+        return next;
+      });
       setUploadingId(null);
       // Reload bookings
       await fetchBookings();
@@ -160,7 +186,7 @@ export default function TenantDashboard() {
           <div className="stat-card">
             <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: 'var(--highlight)' }}>💳</div>
             <div className="stat-info">
-              <span className="stat-label">Pending Payments</span>
+              <span className="stat-label">Awaiting Payment</span>
               <span className="stat-value">
                 {bookings.filter(b => b.status === 'requested').length}
               </span>
@@ -188,8 +214,18 @@ export default function TenantDashboard() {
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-light)' }}>
-          Loading your dashboard info...
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', display: 'grid', gridTemplateColumns: '300px 1fr' }}>
+              <Skeleton style={{ height: '220px', borderRadius: 0 }} />
+              <div style={{ padding: '1.75rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <Skeleton style={{ height: '1.25rem', width: '40%' }} />
+                <Skeleton style={{ height: '1.75rem', width: '70%' }} />
+                <Skeleton style={{ height: '1.25rem', width: '30%' }} />
+                <Skeleton style={{ height: '3rem', width: '100%' }} />
+              </div>
+            </div>
+          ))}
         </div>
       ) : error ? (
         <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '1rem', borderRadius: 'var(--radius)', fontSize: '0.95rem' }}>
@@ -273,27 +309,36 @@ export default function TenantDashboard() {
                       </div>
 
                       {uploadingId !== booking.id ? (
-                        <button 
-                          onClick={() => {
-                            setUploadingId(booking.id);
-                            setUploadError('');
-                            setUploadSuccess(false);
-                          }} 
-                          className="btn btn-secondary" 
-                          style={{ padding: '0.6rem', fontSize: '0.9rem' }}
-                        >
-                          📤 Upload Payment Receipt (Screenshot)
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          <button 
+                            onClick={() => {
+                              setUploadingId(booking.id);
+                              setUploadError('');
+                              setUploadSuccess(false);
+                            }} 
+                            className="btn btn-secondary" 
+                            style={{ padding: '0.6rem', fontSize: '0.9rem', flex: 1 }}
+                          >
+                            📤 Upload Payment Receipt (Screenshot)
+                          </button>
+                          <button
+                            onClick={() => handleCancelBooking(booking.id)}
+                            className="btn btn-outline"
+                            style={{ padding: '0.6rem', fontSize: '0.9rem' }}
+                          >
+                            Cancel Booking
+                          </button>
+                        </div>
                       ) : (
                         <form onSubmit={(e) => handleUploadReceipt(e, booking.id)} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                           <label className="form-label" style={{ fontSize: '0.8rem', margin: 0 }}>Select receipt image file:</label>
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            onChange={handleFileChange}
-                            required
-                            style={{ fontSize: '0.85rem' }}
-                          />
+                           <input 
+                             type="file" 
+                             accept="image/*" 
+                             onChange={(e) => handleFileChange(e, booking.id)}
+                             required
+                             style={{ fontSize: '0.85rem' }}
+                           />
                           {uploadError && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', fontWeight: 500 }}>✗ {uploadError}</div>}
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem', fontSize: '0.85rem' }}>Submit Receipt</button>
@@ -301,7 +346,11 @@ export default function TenantDashboard() {
                               type="button" 
                               onClick={() => {
                                 setUploadingId(null);
-                                setReceiptFile(null);
+                                setReceiptFiles(prev => {
+                                  const next = { ...prev };
+                                  delete next[booking.id];
+                                  return next;
+                                });
                               }} 
                               className="btn btn-outline" 
                               style={{ padding: '0.5rem', fontSize: '0.85rem' }}
