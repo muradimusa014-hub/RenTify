@@ -5,7 +5,18 @@ import { useState } from 'react';
 export default function ImageWithFallback({ src, alt, className, style, ...props }) {
   const [error, setError] = useState(false);
 
-  if (error || !src) {
+  const formatSrc = (rawSrc) => {
+    if (!rawSrc) return null;
+    if (typeof rawSrc !== 'string') return rawSrc;
+    if (rawSrc.includes(';base64%2C')) {
+      return rawSrc.replace(';base64%2C', ';base64,');
+    }
+    return rawSrc;
+  };
+
+  const finalSrc = formatSrc(src);
+
+  if (error || !finalSrc) {
     return (
       <div
         className={className}
@@ -27,8 +38,8 @@ export default function ImageWithFallback({ src, alt, className, style, ...props
 
   return (
     <img
-      src={src}
-      alt={alt}
+      src={finalSrc}
+      alt={alt || ''}
       className={className}
       style={style}
       onError={() => setError(true)}
@@ -37,3 +48,4 @@ export default function ImageWithFallback({ src, alt, className, style, ...props
     />
   );
 }
+

@@ -60,7 +60,7 @@ export async function saveFile(file, subFolder) {
   // 3. Fallback: Data URL (Ensures property upload never crashes on Vercel)
   const mimeType = file.type || 'image/jpeg';
   const base64 = buffer.toString('base64');
-  return `data:${mimeType};base64,${base64}`;
+  return `data:${mimeType};base64%2C${base64}`;
 }
 
 export async function deleteFile(relativePath) {
