@@ -26,16 +26,20 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    async function fetchFeatured() {
+    async function fetchFeatured(retries = 2) {
       try {
         const res = await fetch('/api/properties');
         if (res.ok) {
           const data = await res.json();
-          // Take the first 3 listings as featured
-          setFeatured(data.properties.slice(0, 3));
+          setFeatured(data.properties ? data.properties.slice(0, 3) : []);
+        } else if (res.status === 503 && retries > 0) {
+          setTimeout(() => fetchFeatured(retries - 1), 600);
         }
       } catch (err) {
         console.error('Error fetching featured properties:', err);
+        if (retries > 0) {
+          setTimeout(() => fetchFeatured(retries - 1), 600);
+        }
       } finally {
         setLoading(false);
       }

@@ -28,7 +28,7 @@ function ListingsContent() {
   const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
 
   useEffect(() => {
-    async function loadProperties() {
+    async function loadProperties(retries = 2) {
       setLoading(true);
       try {
         let query = `/api/properties?`;
@@ -39,10 +39,15 @@ function ListingsContent() {
         const res = await fetch(query);
         if (res.ok) {
           const data = await res.json();
-          setProperties(data.properties);
+          setProperties(data.properties || []);
+        } else if (res.status === 503 && retries > 0) {
+          setTimeout(() => loadProperties(retries - 1), 600);
         }
       } catch (err) {
         console.error('Error loading properties:', err);
+        if (retries > 0) {
+          setTimeout(() => loadProperties(retries - 1), 600);
+        }
       } finally {
         setLoading(false);
       }

@@ -43,7 +43,7 @@ export async function PUT(request, { params }) {
     const token = tokenCookie ? tokenCookie.value : null;
     const user = token ? await verifyToken(token) : null;
 
-    if (!user || user.role !== 'landlord') {
+    if (!user || (user.role !== 'landlord' && user.role !== 'admin')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -55,7 +55,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
     }
 
-    if (property.ownerId !== user.id) {
+    if (property.ownerId !== user.id && user.role !== 'admin') {
       return NextResponse.json(
         { error: 'Forbidden. You do not own this property.' },
         { status: 403 }

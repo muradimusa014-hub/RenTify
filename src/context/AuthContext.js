@@ -10,6 +10,28 @@ const AuthContext = createContext({
   refreshUser: async () => {},
 });
 
+async function fetchWithRetry(url, options = {}, retries = 2, delayMs = 600) {
+  let lastRes;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      // If server returns 503 (Database connection temporarily unavailable), retry
+      if (res.status === 503 && attempt < retries) {
+        await new Promise(r => setTimeout(r, delayMs));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, delayMs));
+      } else {
+        throw err;
+      }
+    }
+  }
+  return lastRes;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,8 +39,8 @@ export function AuthProvider({ children }) {
 
   const refreshUser = async () => {
     try {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) {
+      const res = await fetchWithRetry('/api/auth/me');
+      if (res && res.ok) {
         const data = await res.json();
         setUser(data.user);
       } else {
@@ -39,7 +61,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetchWithRetry('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

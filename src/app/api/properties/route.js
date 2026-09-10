@@ -66,9 +66,9 @@ export async function POST(request) {
     const token = tokenCookie ? tokenCookie.value : null;
     const user = token ? await verifyToken(token) : null;
 
-    if (!user || user.role !== 'landlord') {
+    if (!user || (user.role !== 'landlord' && user.role !== 'admin')) {
       return NextResponse.json(
-        { error: 'Unauthorized. Landlords only.' },
+        { error: 'Unauthorized. Landlords and Admins only.' },
         { status: 401 }
       );
     }
