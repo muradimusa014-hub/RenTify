@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import { withRetry } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { saveFile } from '@/lib/upload';
 
@@ -16,15 +16,17 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: {
-        property: true,
-        tenant: {
-          select: { email: true },
+    const booking = await withRetry((db) =>
+      db.booking.findUnique({
+        where: { id },
+        include: {
+          property: true,
+          tenant: {
+            select: { email: true },
+          },
         },
-      },
-    });
+      })
+    );
 
     if (!booking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
@@ -42,10 +44,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({ booking });
   } catch (error) {
     console.error('Fetch Booking Detail Error:', error);
-    if (error.message && error.message.includes('Can\'t reach database server')) {
-      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
-    }
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error fetching booking.' }, { status: 500 });
   }
 }
 
@@ -63,10 +62,12 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: { property: true },
-    });
+    const booking = await withRetry((db) =>
+      db.booking.findUnique({
+        where: { id },
+        include: { property: true },
+      })
+    );
 
     if (!booking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
@@ -97,13 +98,15 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const updatedBooking = await prisma.booking.update({
-      where: { id },
-      data: {
-        status: 'payment_pending',
-        receiptImage: savedPath,
-      },
-    });
+    const updatedBooking = await withRetry((db) =>
+      db.booking.update({
+        where: { id },
+        data: {
+          status: 'payment_pending',
+          receiptImage: savedPath,
+        },
+      })
+    );
 
     return NextResponse.json({
       message: 'Receipt uploaded successfully',
@@ -111,10 +114,7 @@ export async function PUT(request, { params }) {
     });
   } catch (error) {
     console.error('Upload Receipt Error:', error);
-    if (error.message && error.message.includes('Can\'t reach database server')) {
-      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
-    }
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error uploading receipt.' }, { status: 500 });
   }
 }
 
@@ -132,10 +132,12 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: { property: true },
-    });
+    const booking = await withRetry((db) =>
+      db.booking.findUnique({
+        where: { id },
+        include: { property: true },
+      })
+    );
 
     if (!booking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
@@ -155,20 +157,20 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    await prisma.$transaction([
-      prisma.booking.delete({ where: { id } }),
-      prisma.property.update({
-        where: { id: booking.propertyId },
-        data: { status: 'available' },
-      }),
-    ]);
+    await withRetry((db) =>
+      db.$transaction([
+        db.booking.delete({ where: { id } }),
+        db.property.update({
+          where: { id: booking.propertyId },
+          data: { status: 'available' },
+        }),
+      ])
+    );
 
     return NextResponse.json({ message: 'Booking cancelled successfully' });
   } catch (error) {
     console.error('Cancel Booking Error:', error);
-    if (error.message && error.message.includes('Can\'t reach database server')) {
-      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
-    }
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error cancelling booking.' }, { status: 500 });
   }
 }
+

@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import { withRetry } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
 export async function GET(request) {
@@ -17,53 +17,56 @@ export async function GET(request) {
     let bookings = [];
 
     if (user.role === 'tenant') {
-      bookings = await prisma.booking.findMany({
-        where: { tenantId: user.id },
-        include: {
-          property: {
-            include: {
-              owner: {
-                select: { email: true },
+      bookings = await withRetry((db) =>
+        db.booking.findMany({
+          where: { tenantId: user.id },
+          include: {
+            property: {
+              include: {
+                owner: {
+                  select: { email: true },
+                },
               },
             },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+          orderBy: { createdAt: 'desc' },
+        })
+      );
     } else if (user.role === 'landlord') {
-      bookings = await prisma.booking.findMany({
-        where: {
-          property: {
-            ownerId: user.id,
+      bookings = await withRetry((db) =>
+        db.booking.findMany({
+          where: {
+            property: {
+              ownerId: user.id,
+            },
           },
-        },
-        include: {
-          property: true,
-          tenant: {
-            select: { email: true },
+          include: {
+            property: true,
+            tenant: {
+              select: { email: true },
+            },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+          orderBy: { createdAt: 'desc' },
+        })
+      );
     } else if (user.role === 'admin') {
-      bookings = await prisma.booking.findMany({
-        include: {
-          property: true,
-          tenant: {
-            select: { email: true },
+      bookings = await withRetry((db) =>
+        db.booking.findMany({
+          include: {
+            property: true,
+            tenant: {
+              select: { email: true },
+            },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+          orderBy: { createdAt: 'desc' },
+        })
+      );
     }
 
     return NextResponse.json({ bookings });
   } catch (error) {
     console.error('Fetch Bookings Error:', error);
-    if (error.message && error.message.includes('Can\'t reach database server')) {
-      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
-    }
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error loading bookings. Please try again.' }, { status: 500 });
   }
 }
 
@@ -89,9 +92,11 @@ export async function POST(request) {
       );
     }
 
-    const property = await prisma.property.findUnique({
-      where: { id: propertyId },
-    });
+    const property = await withRetry((db) =>
+      db.property.findUnique({
+        where: { id: propertyId },
+      })
+    );
 
     if (!property) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
@@ -105,13 +110,15 @@ export async function POST(request) {
     }
 
     // Check if the tenant already has a pending/requested booking on this property
-    const existingBooking = await prisma.booking.findFirst({
-      where: {
-        propertyId,
-        tenantId: user.id,
-        status: { in: ['requested', 'payment_pending', 'paid'] },
-      },
-    });
+    const existingBooking = await withRetry((db) =>
+      db.booking.findFirst({
+        where: {
+          propertyId,
+          tenantId: user.id,
+          status: { in: ['requested', 'payment_pending', 'paid'] },
+        },
+      })
+    );
 
     if (existingBooking) {
       return NextResponse.json(
@@ -120,19 +127,23 @@ export async function POST(request) {
       );
     }
 
-    const booking = await prisma.booking.create({
-      data: {
-        propertyId,
-        tenantId: user.id,
-        status: 'requested',
-      },
-    });
+    const booking = await withRetry((db) =>
+      db.booking.create({
+        data: {
+          propertyId,
+          tenantId: user.id,
+          status: 'requested',
+        },
+      })
+    );
 
     // Shift property status to pending when booking is requested
-    await prisma.property.update({
-      where: { id: propertyId },
-      data: { status: 'pending' },
-    });
+    await withRetry((db) =>
+      db.property.update({
+        where: { id: propertyId },
+        data: { status: 'pending' },
+      })
+    );
 
     return NextResponse.json(
       { message: 'Booking requested successfully', booking },
@@ -140,9 +151,7 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error('Create Booking Error:', error);
-    if (error.message && error.message.includes('Can\'t reach database server')) {
-      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
-    }
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error processing booking request.' }, { status: 500 });
   }
 }
+

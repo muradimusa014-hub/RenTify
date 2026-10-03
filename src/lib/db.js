@@ -2,37 +2,44 @@ export const runtime = 'nodejs';
 
 import { PrismaClient } from '@prisma/client';
 
-let prisma;
+const globalForPrisma = globalThis;
 
-if (process.env.NODE_ENV === 'production') {
-  prisma = new PrismaClient();
-} else {
-  if (!global.prisma) {
-    global.prisma = new PrismaClient();
-  }
-  prisma = global.prisma;
+let prismaInstance = globalForPrisma.prisma;
+
+if (!prismaInstance) {
+  prismaInstance = new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+  });
+  globalForPrisma.prisma = prismaInstance;
 }
+
+export const prisma = prismaInstance;
 
 /**
  * Executes a database query function with automatic retries on transient connection failures.
  */
-export async function withRetry(fn, retries = 2, delayMs = 500) {
+export async function withRetry(fn, retries = 3, delayMs = 400) {
   let lastError;
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  for (let attempt = 0; attempt < retries; attempt++) {
     try {
       return await fn(prisma);
     } catch (error) {
       lastError = error;
+      const msg = String(error?.message || '');
+      const code = error?.code;
       const isConnectionError =
-        error?.message?.includes("Can't reach database server") ||
-        error?.message?.includes("connection closed") ||
-        error?.message?.includes("Timed out") ||
-        error?.code === 'P1001' ||
-        error?.code === 'P1002' ||
-        error?.code === 'P1017';
+        msg.includes("Can't reach database server") ||
+        msg.includes("connection closed") ||
+        msg.includes("Timed out") ||
+        msg.includes("Engine") ||
+        msg.includes("socket") ||
+        code === 'P1001' ||
+        code === 'P1002' ||
+        code === 'P1017' ||
+        code === 'P2024';
 
-      if (isConnectionError && attempt < retries) {
-        console.warn(`[DB Retry] Transient DB error on attempt ${attempt + 1}/${retries + 1}. Retrying in ${delayMs}ms...`);
+      if (isConnectionError && attempt < retries - 1) {
+        console.warn(`[DB Retry] Transient DB error (${code || 'connection'}). Attempt ${attempt + 1}/${retries}. Retrying in ${delayMs}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       } else {
         throw error;
@@ -43,3 +50,4 @@ export async function withRetry(fn, retries = 2, delayMs = 500) {
 }
 
 export default prisma;
+

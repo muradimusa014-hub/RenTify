@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import ReceiptModal from '@/components/ReceiptModal';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -11,6 +12,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [selectedReceiptBooking, setSelectedReceiptBooking] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -129,15 +131,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-light)' }}>
-          Loading admin dashboard...
-        </div>
-      ) : error ? (
-        <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '1rem', borderRadius: 'var(--radius)' }}>
-          ✗ {error}
-        </div>
-      ) : (
+      {!loading && !error && (
         <div className="tabs-nav" style={{ marginBottom: '1.5rem' }}>
           <button
             onClick={() => setActiveTab('bookings')}
@@ -159,6 +153,16 @@ export default function AdminDashboard() {
           </button>
         </div>
       )}
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-light)' }}>
+          Loading admin dashboard...
+        </div>
+      ) : error ? (
+        <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '1rem', borderRadius: 'var(--radius)' }}>
+          ✗ {error}
+        </div>
+      ) : null}
 
       {!loading && !error && activeTab === 'bookings' && (
         <div className="table-wrapper">
@@ -192,9 +196,13 @@ export default function AdminDashboard() {
                     </td>
                     <td>
                       {booking.receiptImage ? (
-                        <a href={booking.receiptImage} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--secondary)', fontWeight: 600, fontSize: '0.85rem' }}>
-                          View Receipt
-                        </a>
+                        <button
+                          onClick={() => setSelectedReceiptBooking(booking)}
+                          className="btn btn-outline"
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', width: 'auto' }}
+                        >
+                          👁 View Receipt
+                        </button>
                       ) : (
                         <span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>N/A</span>
                       )}
@@ -371,6 +379,23 @@ export default function AdminDashboard() {
           </table>
         </div>
       )}
+
+      {selectedReceiptBooking && (
+        <ReceiptModal
+          booking={selectedReceiptBooking}
+          onClose={() => setSelectedReceiptBooking(null)}
+          onApprove={(id) => {
+            setSelectedReceiptBooking(null);
+            handleAdminAction('approve_payment', id);
+          }}
+          onReject={(id) => {
+            setSelectedReceiptBooking(null);
+            handleAdminAction('reject_payment', id);
+          }}
+          actionLoading={actionLoading}
+        />
+      )}
     </div>
   );
 }
+

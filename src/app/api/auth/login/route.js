@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import { withRetry } from '@/lib/db';
 import { comparePassword } from '@/lib/hash';
 import { signToken } from '@/lib/jwt';
 
@@ -16,9 +16,13 @@ export async function POST(request) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-    });
+    const cleanEmail = email.toLowerCase().trim();
+
+    const user = await withRetry((db) =>
+      db.user.findUnique({
+        where: { email: cleanEmail },
+      })
+    );
 
     if (!user) {
       return NextResponse.json(
@@ -60,15 +64,10 @@ export async function POST(request) {
     return response;
   } catch (error) {
     console.error('Login Error:', error);
-    if (error.message && error.message.includes('Can\'t reach database server')) {
-      return NextResponse.json(
-        { error: 'Unable to connect to database. Please try again later or contact support.' },
-        { status: 503 }
-      );
-    }
     return NextResponse.json(
-      { error: 'Something went wrong on the server' },
+      { error: 'Unable to connect to service. Please try again.' },
       { status: 500 }
     );
   }
 }
+

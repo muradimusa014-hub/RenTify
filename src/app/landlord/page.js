@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import Link from 'next/link';
 import ImageWithFallback from '@/components/ImageWithFallback';
+import ReceiptModal from '@/components/ReceiptModal';
 
 const ZARIA_AREAS = [
   'Samaru',
@@ -26,6 +27,7 @@ export default function LandlordDashboard() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedReceiptBooking, setSelectedReceiptBooking] = useState(null);
 
   // Modal / Form state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -327,8 +329,8 @@ export default function LandlordDashboard() {
                   <th>Location</th>
                   <th>Tenant Email</th>
                   <th>Status</th>
+                  <th>Receipt</th>
                   <th>Date Requested</th>
-                  <th>Reference</th>
                 </tr>
               </thead>
               <tbody>
@@ -346,10 +348,20 @@ export default function LandlordDashboard() {
                         {booking.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td>{new Date(booking.createdAt).toLocaleDateString()}</td>
-                    <td style={{ fontSize: '0.75rem', color: 'var(--text-light)', fontFamily: 'monospace' }}>
-                      {booking.id.split('-')[0]}
+                    <td>
+                      {booking.receiptImage ? (
+                        <button
+                          onClick={() => setSelectedReceiptBooking(booking)}
+                          className="btn btn-outline"
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', width: 'auto' }}
+                        >
+                          👁 View Receipt
+                        </button>
+                      ) : (
+                        <span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>N/A</span>
+                      )}
                     </td>
+                    <td>{new Date(booking.createdAt).toLocaleDateString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -451,6 +463,14 @@ export default function LandlordDashboard() {
           </div>
         </div>
       )}
+
+      {selectedReceiptBooking && (
+        <ReceiptModal
+          booking={selectedReceiptBooking}
+          onClose={() => setSelectedReceiptBooking(null)}
+        />
+      )}
     </div>
   );
 }
+

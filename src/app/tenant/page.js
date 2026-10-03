@@ -5,6 +5,7 @@ import { useToast } from '@/context/ToastContext';
 import Link from 'next/link';
 import Skeleton from '@/components/Skeleton';
 import ImageWithFallback from '@/components/ImageWithFallback';
+import ReceiptModal from '@/components/ReceiptModal';
 
 function BookingStepper({ status }) {
   if (status === 'rejected') return null;
@@ -64,6 +65,7 @@ export default function TenantDashboard() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedReceiptBooking, setSelectedReceiptBooking] = useState(null);
 
   const handleCancelBooking = async (bookingId) => {
     if (!confirm('Are you sure you want to cancel this booking request? The property will become available again.')) {
@@ -371,9 +373,13 @@ export default function TenantDashboard() {
                       </p>
                       {booking.receiptImage && (
                         <div style={{ marginTop: '0.75rem' }}>
-                          <a href={booking.receiptImage} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', fontWeight: 600 }}>
-                            View Uploaded Receipt
-                          </a>
+                          <button
+                            onClick={() => setSelectedReceiptBooking(booking)}
+                            className="btn btn-outline"
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', width: 'auto' }}
+                          >
+                            👁 View Uploaded Receipt
+                          </button>
                         </div>
                       )}
                     </div>
@@ -385,6 +391,17 @@ export default function TenantDashboard() {
                       <p style={{ marginTop: '0.25rem', lineHeight: 1.4 }}>
                         Your payment has been successfully approved! Next, schedule your physical property inspection with the landlord (<strong>{booking.property.owner.email}</strong>).
                       </p>
+                      {booking.receiptImage && (
+                        <div style={{ marginTop: '0.75rem' }}>
+                          <button
+                            onClick={() => setSelectedReceiptBooking(booking)}
+                            className="btn btn-outline"
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', width: 'auto', background: '#fff' }}
+                          >
+                            👁 View Paid Receipt
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -416,6 +433,14 @@ export default function TenantDashboard() {
           ))}
         </div>
       )}
+
+      {selectedReceiptBooking && (
+        <ReceiptModal
+          booking={selectedReceiptBooking}
+          onClose={() => setSelectedReceiptBooking(null)}
+        />
+      )}
     </div>
   );
 }
+

@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import { withRetry } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { deleteFile } from '@/lib/upload';
 
@@ -18,42 +18,41 @@ export async function GET(request) {
       );
     }
 
-    const [users, properties, bookings] = await Promise.all([
-      prisma.user.findMany({
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.property.findMany({
-        include: {
-          owner: {
-            select: { email: true },
+    const [users, properties, bookings] = await withRetry((db) =>
+      Promise.all([
+        db.user.findMany({
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            createdAt: true,
           },
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.booking.findMany({
-        include: {
-          property: true,
-          tenant: {
-            select: { email: true },
+          orderBy: { createdAt: 'desc' },
+        }),
+        db.property.findMany({
+          include: {
+            owner: {
+              select: { email: true },
+            },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-    ]);
+          orderBy: { createdAt: 'desc' },
+        }),
+        db.booking.findMany({
+          include: {
+            property: true,
+            tenant: {
+              select: { email: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+      ])
+    );
 
     return NextResponse.json({ users, properties, bookings });
   } catch (error) {
     console.error('Fetch Admin Data Error:', error);
-    if (error.message && error.message.includes('Can\'t reach database server')) {
-      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
-    }
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error loading admin data. Please try again.' }, { status: 500 });
   }
 }
 
@@ -83,10 +82,12 @@ export async function POST(request) {
           { status: 400 }
         );
       }
-      const booking = await prisma.booking.update({
-        where: { id: bookingId },
-        data: { status: 'paid' },
-      });
+      const booking = await withRetry((db) =>
+        db.booking.update({
+          where: { id: bookingId },
+          data: { status: 'paid' },
+        })
+      );
       return NextResponse.json({
         message: 'Payment approved successfully',
         booking,
@@ -100,16 +101,20 @@ export async function POST(request) {
           { status: 400 }
         );
       }
-      const booking = await prisma.booking.update({
-        where: { id: bookingId },
-        data: { status: 'rejected' },
-        include: { property: true },
-      });
+      const booking = await withRetry((db) =>
+        db.booking.update({
+          where: { id: bookingId },
+          data: { status: 'rejected' },
+          include: { property: true },
+        })
+      );
       // Revert property status back to available
-      await prisma.property.update({
-        where: { id: booking.propertyId },
-        data: { status: 'available' },
-      });
+      await withRetry((db) =>
+        db.property.update({
+          where: { id: booking.propertyId },
+          data: { status: 'available' },
+        })
+      );
       return NextResponse.json({
         message: 'Payment rejected and property set back to available',
         booking,
@@ -123,16 +128,20 @@ export async function POST(request) {
           { status: 400 }
         );
       }
-      const booking = await prisma.booking.update({
-        where: { id: bookingId },
-        data: { status: 'completed' },
-        include: { property: true },
-      });
+      const booking = await withRetry((db) =>
+        db.booking.update({
+          where: { id: bookingId },
+          data: { status: 'completed' },
+          include: { property: true },
+        })
+      );
       // Update property status to taken
-      await prisma.property.update({
-        where: { id: booking.propertyId },
-        data: { status: 'taken' },
-      });
+      await withRetry((db) =>
+        db.property.update({
+          where: { id: booking.propertyId },
+          data: { status: 'taken' },
+        })
+      );
       return NextResponse.json({
         message: 'Booking marked as completed. Property is now taken.',
         booking,
@@ -146,10 +155,12 @@ export async function POST(request) {
           { status: 400 }
         );
       }
-      const property = await prisma.property.update({
-        where: { id: propertyId },
-        data: { isSuspicious: true },
-      });
+      const property = await withRetry((db) =>
+        db.property.update({
+          where: { id: propertyId },
+          data: { isSuspicious: true },
+        })
+      );
       return NextResponse.json({
         message: 'Property flagged as suspicious',
         property,
@@ -163,10 +174,12 @@ export async function POST(request) {
           { status: 400 }
         );
       }
-      const property = await prisma.property.update({
-        where: { id: propertyId },
-        data: { isSuspicious: false },
-      });
+      const property = await withRetry((db) =>
+        db.property.update({
+          where: { id: propertyId },
+          data: { isSuspicious: false },
+        })
+      );
       return NextResponse.json({
         message: 'Property unflagged successfully',
         property,
@@ -180,20 +193,24 @@ export async function POST(request) {
           { status: 400 }
         );
       }
-      const targetProperty = await prisma.property.findUnique({
-        where: { id: propertyId },
-        select: { images: true },
-      });
+      const targetProperty = await withRetry((db) =>
+        db.property.findUnique({
+          where: { id: propertyId },
+          select: { images: true },
+        })
+      );
 
       if (targetProperty) {
         for (const imagePath of targetProperty.images.split(',')) {
           await deleteFile(imagePath);
         }
 
-        const relatedBookings = await prisma.booking.findMany({
-          where: { propertyId },
-          select: { receiptImage: true },
-        });
+        const relatedBookings = await withRetry((db) =>
+          db.booking.findMany({
+            where: { propertyId },
+            select: { receiptImage: true },
+          })
+        );
 
         for (const booking of relatedBookings) {
           if (booking.receiptImage) {
@@ -202,9 +219,11 @@ export async function POST(request) {
         }
       }
 
-      await prisma.property.delete({
-        where: { id: propertyId },
-      });
+      await withRetry((db) =>
+        db.property.delete({
+          where: { id: propertyId },
+        })
+      );
       return NextResponse.json({ message: 'Property deleted successfully' });
     }
 
@@ -222,10 +241,12 @@ export async function POST(request) {
         );
       }
 
-      const userProperties = await prisma.property.findMany({
-        where: { ownerId: userId },
-        select: { images: true },
-      });
+      const userProperties = await withRetry((db) =>
+        db.property.findMany({
+          where: { ownerId: userId },
+          select: { images: true },
+        })
+      );
 
       for (const property of userProperties) {
         for (const imagePath of property.images.split(',')) {
@@ -233,10 +254,12 @@ export async function POST(request) {
         }
       }
 
-      const userBookings = await prisma.booking.findMany({
-        where: { tenantId: userId },
-        select: { receiptImage: true },
-      });
+      const userBookings = await withRetry((db) =>
+        db.booking.findMany({
+          where: { tenantId: userId },
+          select: { receiptImage: true },
+        })
+      );
 
       for (const booking of userBookings) {
         if (booking.receiptImage) {
@@ -244,18 +267,18 @@ export async function POST(request) {
         }
       }
 
-      await prisma.user.delete({
-        where: { id: userId },
-      });
+      await withRetry((db) =>
+        db.user.delete({
+          where: { id: userId },
+        })
+      );
       return NextResponse.json({ message: 'User deleted successfully' });
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
     console.error('Admin Action Error:', error);
-    if (error.message && error.message.includes('Can\'t reach database server')) {
-      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
-    }
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error processing action. Please try again.' }, { status: 500 });
   }
 }
+

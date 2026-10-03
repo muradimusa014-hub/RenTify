@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import { withRetry } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { saveFile, deleteFile } from '@/lib/upload';
 
@@ -13,14 +13,16 @@ const ZARIA_AREAS = [
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const property = await prisma.property.findUnique({
-      where: { id },
-      include: {
-        owner: {
-          select: { email: true },
+    const property = await withRetry((db) =>
+      db.property.findUnique({
+        where: { id },
+        include: {
+          owner: {
+            select: { email: true },
+          },
         },
-      },
-    });
+      })
+    );
 
     if (!property) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
@@ -29,10 +31,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({ property });
   } catch (error) {
     console.error('Fetch Property Detail Error:', error);
-    if (error.message && error.message.includes('Can\'t reach database server')) {
-      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
-    }
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error fetching property.' }, { status: 500 });
   }
 }
 
@@ -47,9 +46,11 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const property = await prisma.property.findUnique({
-      where: { id },
-    });
+    const property = await withRetry((db) =>
+      db.property.findUnique({
+        where: { id },
+      })
+    );
 
     if (!property) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
@@ -97,17 +98,19 @@ export async function PUT(request, { params }) {
       imagesList = newSavedImages;
     }
 
-    const updatedProperty = await prisma.property.update({
-      where: { id },
-      data: {
-        title: title || property.title,
-        description: description || property.description,
-        price: isNaN(price) ? property.price : price,
-        location: location || property.location,
-        status: status || property.status,
-        images: imagesList.join(','),
-      },
-    });
+    const updatedProperty = await withRetry((db) =>
+      db.property.update({
+        where: { id },
+        data: {
+          title: title || property.title,
+          description: description || property.description,
+          price: isNaN(price) ? property.price : price,
+          location: location || property.location,
+          status: status || property.status,
+          images: imagesList.join(','),
+        },
+      })
+    );
 
     return NextResponse.json({
       message: 'Property updated successfully',
@@ -115,10 +118,7 @@ export async function PUT(request, { params }) {
     });
   } catch (error) {
     console.error('Update Property Error:', error);
-    if (error.message && error.message.includes('Can\'t reach database server')) {
-      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
-    }
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error updating property.' }, { status: 500 });
   }
 }
 
@@ -133,9 +133,11 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const property = await prisma.property.findUnique({
-      where: { id },
-    });
+    const property = await withRetry((db) =>
+      db.property.findUnique({
+        where: { id },
+      })
+    );
 
     if (!property) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
@@ -149,10 +151,12 @@ export async function DELETE(request, { params }) {
       await deleteFile(imagePath);
     }
 
-    const relatedBookings = await prisma.booking.findMany({
-      where: { propertyId: id },
-      select: { receiptImage: true },
-    });
+    const relatedBookings = await withRetry((db) =>
+      db.booking.findMany({
+        where: { propertyId: id },
+        select: { receiptImage: true },
+      })
+    );
 
     for (const booking of relatedBookings) {
       if (booking.receiptImage) {
@@ -160,16 +164,16 @@ export async function DELETE(request, { params }) {
       }
     }
 
-    await prisma.property.delete({
-      where: { id },
-    });
+    await withRetry((db) =>
+      db.property.delete({
+        where: { id },
+      })
+    );
 
     return NextResponse.json({ message: 'Property deleted successfully' });
   } catch (error) {
     console.error('Delete Property Error:', error);
-    if (error.message && error.message.includes('Can\'t reach database server')) {
-      return NextResponse.json({ error: 'Unable to connect to database. Please try again later.' }, { status: 503 });
-    }
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error deleting property.' }, { status: 500 });
   }
 }
+
