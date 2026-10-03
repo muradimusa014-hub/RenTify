@@ -18,34 +18,34 @@ export async function GET(request) {
       );
     }
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const properties = await prisma.property.findMany({
-      include: {
-        owner: {
-          select: { email: true },
+    const [users, properties, bookings] = await Promise.all([
+      prisma.user.findMany({
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          createdAt: true,
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const bookings = await prisma.booking.findMany({
-      include: {
-        property: true,
-        tenant: {
-          select: { email: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.property.findMany({
+        include: {
+          owner: {
+            select: { email: true },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.booking.findMany({
+        include: {
+          property: true,
+          tenant: {
+            select: { email: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
 
     return NextResponse.json({ users, properties, bookings });
   } catch (error) {
