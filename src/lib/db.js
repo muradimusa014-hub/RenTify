@@ -2,15 +2,36 @@ export const runtime = 'nodejs';
 
 import { PrismaClient } from '@prisma/client';
 
+function getSanitizedDatabaseUrl() {
+  let url = process.env.DATABASE_URL || '';
+  if (url.startsWith('postgres') || url.startsWith('postgresql')) {
+    // Automatically guarantee sslmode=require for hosted Postgres/Supabase
+    if (!url.includes('sslmode=')) {
+      const sep = url.includes('?') ? '&' : '?';
+      url = `${url}${sep}sslmode=require`;
+    }
+    // Prevent indefinite network hang with connect_timeout
+    if (!url.includes('connect_timeout=')) {
+      const sep = url.includes('?') ? '&' : '?';
+      url = `${url}${sep}connect_timeout=15`;
+    }
+  }
+  return url;
+}
+
 const globalForPrisma = globalThis;
 
 let prismaInstance = globalForPrisma.prisma;
 
 if (!prismaInstance) {
+  const sanitizedUrl = getSanitizedDatabaseUrl();
   prismaInstance = new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    datasources: sanitizedUrl ? { db: { url: sanitizedUrl } } : undefined,
+    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   });
-  globalForPrisma.prisma = prismaInstance;
+  if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.prisma = prismaInstance;
+  }
 }
 
 export const prisma = prismaInstance;

@@ -18,36 +18,47 @@ export async function GET(request) {
       );
     }
 
-    const [users, properties, bookings] = await withRetry((db) =>
-      Promise.all([
-        db.user.findMany({
-          select: {
-            id: true,
-            email: true,
-            role: true,
-            createdAt: true,
-          },
-          orderBy: { createdAt: 'desc' },
-        }),
-        db.property.findMany({
-          include: {
-            owner: {
-              select: { email: true },
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-        }),
-        db.booking.findMany({
-          include: {
-            property: true,
-            tenant: {
-              select: { email: true },
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-        }),
-      ])
+    const users = await withRetry((db) =>
+      db.user.findMany({
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
     );
+
+    const properties = await withRetry((db) =>
+      db.property.findMany({
+        include: {
+          owner: {
+            select: { email: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+    );
+
+    const rawBookings = await withRetry((db) =>
+      db.booking.findMany({
+        include: {
+          property: true,
+          tenant: {
+            select: { email: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+    );
+
+    // Map bookings so heavy base64 images do not bloat payload or time out serverless functions
+    const bookings = rawBookings.map((b) => ({
+      ...b,
+      hasReceipt: Boolean(b.receiptImage),
+      receiptImage: b.receiptImage ? `/api/bookings/${b.id}/receipt` : null,
+    }));
 
     return NextResponse.json({ users, properties, bookings });
   } catch (error) {

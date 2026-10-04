@@ -1,47 +1,63 @@
 'use client';
-import { useState } from 'react';
-import ImageWithFallback from './ImageWithFallback';
+import { useState, useEffect } from 'react';
 
 export default function ReceiptModal({ booking, onClose, onApprove, onReject, actionLoading }) {
   const [zoomed, setZoomed] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
-  if (!booking || !booking.receiptImage) return null;
+  if (!booking) return null;
 
-  const rawSrc = booking.receiptImage;
-  const formattedSrc = typeof rawSrc === 'string' && rawSrc.includes(';base64%2C')
-    ? rawSrc.replace(';base64%2C', ';base64,')
-    : rawSrc;
+  // Dedicated reliable endpoint
+  const streamingUrl = `/api/bookings/${booking.id}/receipt`;
 
-  const handleDownload = () => {
+  // Compute best source
+  let rawSrc = booking.receiptImage || streamingUrl;
+  if (typeof rawSrc === 'string' && rawSrc.includes(';base64%2C')) {
+    rawSrc = rawSrc.replace(/;base64%2C/g, ';base64,');
+  }
+
+  // Detect if PDF
+  const isPdf = typeof rawSrc === 'string' && (
+    rawSrc.includes('application/pdf') || 
+    rawSrc.toLowerCase().endsWith('.pdf')
+  );
+
+  const handleDownload = async () => {
+    setDownloading(true);
     try {
-      if (formattedSrc.startsWith('data:')) {
-        const a = document.createElement('a');
-        a.href = formattedSrc;
-        a.download = `receipt-${booking.id.slice(0, 8)}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } else {
-        fetch(formattedSrc)
-          .then((res) => res.blob())
-          .then((blob) => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `receipt-${booking.id.slice(0, 8)}.jpg`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-          })
-          .catch(() => {
-            window.open(formattedSrc, '_blank');
-          });
+      // Use dedicated streaming endpoint or clean data URL
+      const fetchTarget = (rawSrc && rawSrc.startsWith('data:')) ? rawSrc : streamingUrl;
+      const res = await fetch(fetchTarget);
+      if (!res.ok && fetchTarget !== streamingUrl) {
+        // Fallback to streaming endpoint if rawSrc failed
+        const fallbackRes = await fetch(streamingUrl);
+        if (!fallbackRes.ok) throw new Error('Failed to download receipt');
+        const blob = await fallbackRes.blob();
+        triggerBlobDownload(blob);
+        return;
       }
-    } catch (e) {
-      console.error(e);
-      window.open(formattedSrc, '_blank');
+      const blob = await res.blob();
+      triggerBlobDownload(blob);
+    } catch (err) {
+      console.warn('Direct blob download failed, opening in new tab:', err.message);
+      window.open(streamingUrl, '_blank');
+    } finally {
+      setDownloading(false);
     }
+  };
+
+  const triggerBlobDownload = (blob) => {
+    const ext = blob.type.includes('pdf') ? 'pdf' : blob.type.includes('png') ? 'png' : 'jpg';
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `receipt-${booking.id.slice(0, 8)}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
   };
 
   return (
@@ -55,7 +71,7 @@ export default function ReceiptModal({ booking, onClose, onApprove, onReject, ac
         right: 0,
         bottom: 0,
         backgroundColor: 'rgba(15, 23, 42, 0.75)',
-        backdropFilter: 'blur(4px)',
+        backdropFilter: 'blur(6px)',
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center',
@@ -70,13 +86,13 @@ export default function ReceiptModal({ booking, onClose, onApprove, onReject, ac
           background: '#ffffff',
           borderRadius: '16px',
           width: '100%',
-          maxWidth: zoomed ? '950px' : '650px',
-          maxHeight: '90vh',
+          maxWidth: zoomed ? '1000px' : '680px',
+          maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
           overflow: 'hidden',
-          transition: 'all 0.3s ease',
+          transition: 'max-width 0.25s ease-in-out',
         }}
       >
         {/* Header */}
@@ -91,66 +107,78 @@ export default function ReceiptModal({ booking, onClose, onApprove, onReject, ac
           }}
         >
           <div>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0F172A' }}>
-              🧾 Payment Receipt Verification
+            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>🧾</span> Payment Receipt Verification
             </h3>
-            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: '#64748B' }}>
-              Reference ID: <code style={{ background: '#E2E8F0', padding: '0.1rem 0.3rem', borderRadius: '4px' }}>{booking.id}</code>
+            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#64748B' }}>
+              Booking Ref: <code style={{ background: '#E2E8F0', padding: '0.1rem 0.4rem', borderRadius: '4px', color: '#1E293B', fontWeight: 600 }}>{booking.id}</code>
             </p>
           </div>
-          <button 
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              fontSize: '1.5rem',
-              cursor: 'pointer',
-              color: '#64748B',
-              lineHeight: 1,
-              padding: '0.25rem 0.5rem',
-              borderRadius: '6px',
-            }}
-          >
-            ✕
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <a
+              href={streamingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-outline"
+              style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem', textDecoration: 'none' }}
+              title="Open full receipt in new browser tab"
+            >
+              ↗ Fullscreen
+            </a>
+            <button 
+              onClick={onClose}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                color: '#64748B',
+                lineHeight: 1,
+                padding: '0.25rem 0.5rem',
+                borderRadius: '6px',
+              }}
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Details bar */}
         <div 
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
             gap: '0.75rem',
-            padding: '1rem 1.5rem',
+            padding: '0.9rem 1.5rem',
             background: '#F1F5F9',
             fontSize: '0.85rem',
             borderBottom: '1px solid #E2E8F0',
           }}
         >
           <div>
-            <span style={{ color: '#64748B', display: 'block', fontSize: '0.75rem' }}>Tenant</span>
-            <strong>{booking.tenant?.email || 'N/A'}</strong>
+            <span style={{ color: '#64748B', display: 'block', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tenant</span>
+            <strong style={{ color: '#0F172A', wordBreak: 'break-all' }}>{booking.tenant?.email || 'N/A'}</strong>
           </div>
           <div>
-            <span style={{ color: '#64748B', display: 'block', fontSize: '0.75rem' }}>Property</span>
-            <strong>{booking.property?.title || 'Property'}</strong>
+            <span style={{ color: '#64748B', display: 'block', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Property</span>
+            <strong style={{ color: '#0F172A' }}>{booking.property?.title || 'Property'}</strong>
           </div>
           <div>
-            <span style={{ color: '#64748B', display: 'block', fontSize: '0.75rem' }}>Amount</span>
-            <strong style={{ color: '#2563EB' }}>₦{booking.property?.price?.toLocaleString() || '0'}</strong>
+            <span style={{ color: '#64748B', display: 'block', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amount</span>
+            <strong style={{ color: '#2563EB', fontSize: '0.95rem' }}>₦{booking.property?.price?.toLocaleString() || '0'}</strong>
           </div>
           <div>
-            <span style={{ color: '#64748B', display: 'block', fontSize: '0.75rem' }}>Status</span>
+            <span style={{ color: '#64748B', display: 'block', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</span>
             <span className={`badge badge-${booking.status}`} style={{ display: 'inline-block', marginTop: '0.1rem' }}>
               {booking.status?.replace('_', ' ')}
             </span>
           </div>
         </div>
 
-        {/* Image Display Body */}
+        {/* Image / Document Display Body */}
         <div 
           style={{
-            padding: '1.5rem',
+            padding: '1.25rem',
             flex: 1,
             overflowY: 'auto',
             display: 'flex',
@@ -158,27 +186,103 @@ export default function ReceiptModal({ booking, onClose, onApprove, onReject, ac
             alignItems: 'center',
             justifyContent: 'center',
             background: '#0F172A',
-            minHeight: '300px',
+            minHeight: '340px',
             position: 'relative',
           }}
         >
-          <ImageWithFallback
-            src={formattedSrc}
-            alt="Payment Receipt"
-            style={{
-              maxWidth: '100%',
-              maxHeight: zoomed ? '75vh' : '50vh',
-              objectFit: 'contain',
-              borderRadius: '8px',
-              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)',
-              cursor: zoomed ? 'zoom-out' : 'zoom-in',
-              transition: 'transform 0.2s ease-in-out',
-            }}
-            onClick={() => setZoomed(!zoomed)}
-          />
-          <div style={{ marginTop: '0.75rem', color: '#94A3B8', fontSize: '0.75rem' }}>
-            💡 Click image to {zoomed ? 'zoom out' : 'zoom in'}
-          </div>
+          {isPdf ? (
+            <div style={{ width: '100%', height: zoomed ? '75vh' : '55vh', display: 'flex', flexDirection: 'column' }}>
+              <iframe
+                src={streamingUrl}
+                title="Receipt Document (PDF)"
+                style={{ width: '100%', height: '100%', border: 'none', borderRadius: '8px', background: '#fff' }}
+              />
+            </div>
+          ) : (
+            <>
+              {imageLoading && !imageError && (
+                <div style={{ color: '#94A3B8', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>⏳</span> Loading receipt preview...
+                </div>
+              )}
+
+              {imageError ? (
+                <div style={{
+                  background: '#1E293B',
+                  border: '1px solid #334155',
+                  borderRadius: '12px',
+                  padding: '2rem',
+                  textAlign: 'center',
+                  color: '#F8FAFC',
+                  maxWidth: '450px'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📄</div>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>Receipt File Uploaded</h4>
+                  <p style={{ color: '#94A3B8', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+                    The receipt image is securely stored. Click below to view fullscreen or download.
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <a
+                      href={streamingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-primary"
+                      style={{ fontSize: '0.85rem', textDecoration: 'none', padding: '0.45rem 1rem' }}
+                    >
+                      ↗ Open Fullscreen
+                    </a>
+                    <button
+                      onClick={handleDownload}
+                      className="btn btn-outline"
+                      style={{ fontSize: '0.85rem', padding: '0.45rem 1rem', background: 'transparent', color: '#fff', borderColor: '#64748B' }}
+                    >
+                      📥 Download
+                    </button>
+                    <button
+                      onClick={() => { setImageError(false); setImageLoading(true); }}
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.85rem', padding: '0.45rem 1rem' }}
+                    >
+                      ↻ Retry
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={rawSrc || streamingUrl}
+                  alt="Payment Receipt"
+                  onLoad={() => setImageLoading(false)}
+                  onError={() => {
+                    // Try fallback to streaming URL if rawSrc failed
+                    if (rawSrc !== streamingUrl) {
+                      rawSrc = streamingUrl;
+                      setImageLoading(true);
+                    } else {
+                      setImageLoading(false);
+                      setImageError(true);
+                    }
+                  }}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: zoomed ? '75vh' : '52vh',
+                    objectFit: 'contain',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)',
+                    cursor: zoomed ? 'zoom-out' : 'zoom-in',
+                    display: imageLoading ? 'none' : 'block',
+                    transition: 'transform 0.2s ease-in-out',
+                  }}
+                  onClick={() => setZoomed(!zoomed)}
+                />
+              )}
+
+              {!imageLoading && !imageError && (
+                <div style={{ marginTop: '0.75rem', color: '#94A3B8', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span>💡</span> Click image to {zoomed ? 'zoom out' : 'zoom in'}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Footer Actions */}
@@ -187,20 +291,32 @@ export default function ReceiptModal({ booking, onClose, onApprove, onReject, ac
             padding: '1rem 1.5rem',
             borderTop: '1px solid #E2E8F0',
             display: 'flex',
-            justify: 'space-between',
+            justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: '0.75rem',
             background: '#ffffff',
           }}
         >
-          <button
-            onClick={handleDownload}
-            className="btn btn-outline"
-            style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}
-          >
-            📥 Download Image
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="btn btn-outline"
+              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <span>📥</span> {downloading ? 'Downloading...' : 'Download File'}
+            </button>
+            <a
+              href={streamingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-outline"
+              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <span>↗</span> Fullscreen
+            </a>
+          </div>
 
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             {onApprove && booking.status === 'payment_pending' && (

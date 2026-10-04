@@ -63,7 +63,13 @@ export async function GET(request) {
       );
     }
 
-    return NextResponse.json({ bookings });
+    const formattedBookings = bookings.map((b) => ({
+      ...b,
+      hasReceipt: Boolean(b.receiptImage),
+      receiptImage: b.receiptImage ? `/api/bookings/${b.id}/receipt` : null,
+    }));
+
+    return NextResponse.json({ bookings: formattedBookings });
   } catch (error) {
     console.error('Fetch Bookings Error:', error);
     return NextResponse.json({ error: 'Server error loading bookings. Please try again.' }, { status: 500 });
