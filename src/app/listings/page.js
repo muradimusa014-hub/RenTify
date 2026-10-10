@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Skeleton from '@/components/Skeleton';
 import ImageWithFallback from '@/components/ImageWithFallback';
+import PropertySocialBar from '@/components/PropertySocialBar';
 
 const ZARIA_AREAS = [
   'Samaru',
@@ -27,31 +28,33 @@ function ListingsContent() {
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
   const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
 
-  useEffect(() => {
-    async function loadProperties(retries = 2) {
-      setLoading(true);
+  const loadProperties = async (maxRetries = 2) => {
+    setLoading(true);
+    let query = `/api/properties?`;
+    if (location !== 'all') query += `location=${location}&`;
+    if (minPrice) query += `minPrice=${minPrice}&`;
+    if (maxPrice) query += `maxPrice=${maxPrice}&`;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        let query = `/api/properties?`;
-        if (location !== 'all') query += `location=${location}&`;
-        if (minPrice) query += `minPrice=${minPrice}&`;
-        if (maxPrice) query += `maxPrice=${maxPrice}&`;
-        
         const res = await fetch(query);
         if (res.ok) {
           const data = await res.json();
           setProperties(data.properties || []);
-        } else if (res.status === 503 && retries > 0) {
-          setTimeout(() => loadProperties(retries - 1), 600);
+          setLoading(false);
+          return;
         }
       } catch (err) {
-        console.error('Error loading properties:', err);
-        if (retries > 0) {
-          setTimeout(() => loadProperties(retries - 1), 600);
-        }
-      } finally {
-        setLoading(false);
+        console.warn(`Listings fetch attempt ${attempt + 1} failed:`, err.message);
+      }
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
       }
     }
+    setLoading(false);
+  };
+
+  useEffect(() => {
     loadProperties();
   }, [location, minPrice, maxPrice]);
 
@@ -154,39 +157,56 @@ function ListingsContent() {
             }}>
               <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📭</div>
               <h3 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontWeight: 600 }}>No Properties Found</h3>
-              <p>Try broadening your filters or looking in a different Zaria neighborhood.</p>
+              <p style={{ marginBottom: '1.25rem' }}>Try broadening your filters or looking in a different Zaria neighborhood.</p>
+              <button 
+                onClick={() => loadProperties()} 
+                className="btn btn-outline"
+                style={{ fontSize: '0.85rem', padding: '0.45rem 1.25rem' }}
+              >
+                ↻ Refresh Listings
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-2">
               {properties.map((property) => (
-                <Link href={`/properties/${property.id}`} key={property.id} className="property-card">
-                  <div className="property-card-img-wrapper">
-                     <ImageWithFallback 
-                       src={property.images.split(',')[0]} 
-                       alt={property.title} 
-                       className="property-card-img"
-                     />
-                    <span className={`badge badge-${property.status} property-card-badge`}>
-                      {property.status}
-                    </span>
-                  </div>
-                  
-                  <div className="property-card-content">
-                    <div className="property-card-location">📍 {property.location}</div>
-                    <h3 className="property-card-title">{property.title}</h3>
-                    <div className="property-card-price">
-                      ₦{property.price.toLocaleString()}<span>/year</span>
+                <div key={property.id} className="property-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+                  <Link href={`/properties/${property.id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div className="property-card-img-wrapper">
+                       <ImageWithFallback 
+                         src={property.thumbnail || property.images.split(',')[0]} 
+                         alt={property.title} 
+                         className="property-card-img"
+                       />
+                      <span className={`badge badge-${property.status} property-card-badge`}>
+                        {property.status}
+                      </span>
                     </div>
-                  </div>
-                  <div className="property-card-footer">
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>
-                      Owner: {property.owner.email.split('@')[0]}
-                    </span>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--secondary)', fontWeight: 600 }}>
-                      View &rarr;
-                    </span>
-                  </div>
-                </Link>
+                    
+                    <div className="property-card-content" style={{ flex: 1 }}>
+                      <div className="property-card-location">📍 {property.location}</div>
+                      <h3 className="property-card-title">{property.title}</h3>
+                      <div className="property-card-price">
+                        ₦{property.price.toLocaleString()}<span>/year</span>
+                      </div>
+                    </div>
+                    <div className="property-card-footer">
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>
+                        Owner: {property.owner?.email ? property.owner.email.split('@')[0] : 'Landlord'}
+                      </span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--secondary)', fontWeight: 600 }}>
+                        View &rarr;
+                      </span>
+                    </div>
+                  </Link>
+
+                  {/* Facebook / YouTube Style Social Interaction Bar */}
+                  <PropertySocialBar 
+                    propertyId={property.id}
+                    initialLikes={property.likes || 0}
+                    initialDislikes={property.dislikes || 0}
+                    initialCommentsCount={property.commentsCount || 0}
+                  />
+                </div>
               ))}
             </div>
           )}

@@ -20,6 +20,12 @@ export async function GET(request, { params }) {
           owner: {
             select: { email: true },
           },
+          _count: {
+            select: { comments: true },
+          },
+          reactions: {
+            select: { type: true },
+          },
         },
       })
     );
@@ -28,7 +34,34 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ property });
+    const likes = property.reactions.filter((r) => r.type === 'like').length;
+    const dislikes = property.reactions.filter((r) => r.type === 'dislike').length;
+    const commentsCount = property._count?.comments || 0;
+
+    let imagesList = [];
+    if (property.images) {
+      const rawList = property.images.split(',');
+      imagesList = rawList.map((img, idx) => {
+        if (img.startsWith('http://') || img.startsWith('https://')) {
+          return img;
+        }
+        return `/api/properties/${property.id}/image?index=${idx}`;
+      });
+    }
+
+    const formattedProperty = {
+      ...property,
+      images: imagesList.join(','),
+      thumbnail: imagesList[0] || `/api/properties/${property.id}/image?index=0`,
+      imagesList,
+      likes,
+      dislikes,
+      commentsCount,
+      reactions: undefined,
+      _count: undefined,
+    };
+
+    return NextResponse.json({ property: formattedProperty });
   } catch (error) {
     console.error('Fetch Property Detail Error:', error);
     return NextResponse.json({ error: 'Server error fetching property.' }, { status: 500 });

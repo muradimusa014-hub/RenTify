@@ -8,28 +8,32 @@ generator client {
 }
 
 model User {
-  id           String     @id @default(uuid())
-  email        String     @unique
+  id           String             @id @default(uuid())
+  email        String             @unique
   passwordHash String
-  role         String     // "tenant" | "landlord" | "admin"
-  createdAt    DateTime   @default(now())
+  role         String             // "tenant" | "landlord" | "admin"
+  createdAt    DateTime           @default(now())
   properties   Property[]
   bookings     Booking[]
+  comments     Comment[]
+  reactions    PropertyReaction[]
 }
 
 model Property {
-  id           String     @id @default(uuid())
+  id           String             @id @default(uuid())
   title        String
   description  String
   price        Float
-  location     String     // e.g. "Samaru", "Sabon Gari", "GRA"
-  images       String     // Comma-separated list of image URLs/filenames
-  status       String     @default("available") // "available" | "pending" | "taken"
-  isSuspicious Boolean    @default(false)
+  location     String             // e.g. "Samaru", "Sabon Gari", "GRA"
+  images       String             // Comma-separated list of image URLs/filenames
+  status       String             @default("available") // "available" | "pending" | "taken"
+  isSuspicious Boolean            @default(false)
   ownerId      String
-  owner        User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner        User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   bookings     Booking[]
-  createdAt    DateTime   @default(now())
+  comments     Comment[]
+  reactions    PropertyReaction[]
+  createdAt    DateTime           @default(now())
 }
 
 model Booking {
@@ -42,4 +46,27 @@ model Booking {
   receiptImage String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+}
+
+model Comment {
+  id         String    @id @default(uuid())
+  propertyId String
+  property   Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  authorName String    @default("Student")
+  authorRole String?   @default("tenant") // "tenant" | "landlord" | "admin"
+  content    String
+  createdAt  DateTime  @default(now())
+}
+
+model PropertyReaction {
+  id         String    @id @default(uuid())
+  propertyId String
+  property   Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessionId  String?
+  type       String    // "like" | "dislike"
+  createdAt  DateTime  @default(now())
 }

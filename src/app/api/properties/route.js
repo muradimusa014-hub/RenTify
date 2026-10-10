@@ -47,12 +47,50 @@ export async function GET(request) {
           owner: {
             select: { email: true },
           },
+          _count: {
+            select: { comments: true },
+          },
+          reactions: {
+            select: { type: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
       })
     );
 
-    return NextResponse.json({ properties });
+    const formattedProperties = properties.map((p) => {
+      const likes = p.reactions.filter((r) => r.type === 'like').length;
+      const dislikes = p.reactions.filter((r) => r.type === 'dislike').length;
+      const commentsCount = p._count?.comments || 0;
+
+      // Fast streaming image URL instead of heavy base64 strings in JSON
+      let imagesList = [];
+      if (p.images) {
+        const rawList = p.images.split(',');
+        imagesList = rawList.map((img, idx) => {
+          if (img.startsWith('http://') || img.startsWith('https://')) {
+            return img;
+          }
+          return `/api/properties/${p.id}/image?index=${idx}`;
+        });
+      }
+
+      const thumbnail = imagesList[0] || `/api/properties/${p.id}/image?index=0`;
+
+      return {
+        ...p,
+        images: imagesList.join(','),
+        thumbnail,
+        imagesList,
+        likes,
+        dislikes,
+        commentsCount,
+        reactions: undefined,
+        _count: undefined,
+      };
+    });
+
+    return NextResponse.json({ properties: formattedProperties });
   } catch (error) {
     console.error('Fetch Properties Error:', error);
     return NextResponse.json({ error: 'Server error fetching properties.' }, { status: 500 });

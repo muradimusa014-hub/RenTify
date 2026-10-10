@@ -6,6 +6,7 @@ import { useToast } from '@/context/ToastContext';
 import Skeleton from '@/components/Skeleton';
 import Lightbox from '@/components/Lightbox';
 import ImageWithFallback from '@/components/ImageWithFallback';
+import PropertySocialBar from '@/components/PropertySocialBar';
 
 export default function PropertyDetail() {
   const { id } = useParams();
@@ -181,6 +182,17 @@ export default function PropertyDetail() {
           onNavigate={(idx) => { setLightboxIndex(idx); setActiveImage(images[idx]); }}
         />
       )}
+
+      {/* Social Actions (Likes, Dislikes, Questions / Comments) */}
+      <div style={{ marginBottom: '2rem', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+        <PropertySocialBar 
+          propertyId={property.id}
+          initialLikes={property.likes || 0}
+          initialDislikes={property.dislikes || 0}
+          initialCommentsCount={property.commentsCount || 0}
+          defaultExpanded={true}
+        />
+      </div>
 
       <div className="property-detail-grid">
         {/* Description */}
